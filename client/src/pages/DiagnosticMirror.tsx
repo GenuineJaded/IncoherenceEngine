@@ -27,7 +27,7 @@ interface DiagnosticMirrorProps {
 }
 
 // Helper function to execute fetch requests with automatic retries on rate limits (HTTP 429)
-async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3, initialDelay = 1500): Promise<Response> {
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 2, initialDelay = 1000): Promise<Response> {
   let delay = initialDelay;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
@@ -37,11 +37,19 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3,
       if (res.status === 429) {
         const data = await res.clone().json().catch(() => ({}));
         const retryAfter = data?.error?.metadata?.retry_after_seconds || data?.error?.metadata?.retry_after_seconds_raw;
-        const waitTime = retryAfter ? (parseFloat(retryAfter) * 1000) + 500 : delay;
+        const rawWaitTime = retryAfter ? (parseFloat(retryAfter) * 1000) : delay;
         
+        // If the upstream rate limit wait is too long (e.g. > 5 seconds), do not freeze the UI.
+        // Fail fast so we can show a friendly warning and proceed with other models immediately.
+        if (rawWaitTime > 5000) {
+          console.warn(`[OpenRouter 429] Rate limit wait time is too long (${rawWaitTime / 1000}s). Failing fast to prevent freezing UI.`);
+          return res;
+        }
+        
+        const waitTime = rawWaitTime + 500;
         console.warn(`[OpenRouter 429] Rate limited. Retrying in ${waitTime / 1000}s (Attempt ${attempt + 1}/${maxRetries})...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
-        delay *= 2; // Exponential backoff for subsequent attempts
+        delay *= 2; // Exponential backoff
         continue;
       }
       

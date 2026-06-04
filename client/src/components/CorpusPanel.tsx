@@ -18,7 +18,7 @@ function RenderMarkdown({ text }: { text: string }) {
   const lines = text.split("\n");
   
   return (
-    <div className="flex flex-col gap-2">
+    <div className="block space-y-2">
       {lines.map((line, idx) => {
         const trimmed = line.trim();
         
@@ -29,10 +29,10 @@ function RenderMarkdown({ text }: { text: string }) {
           return (
             <div 
               key={idx} 
-              className="flex gap-2" 
-              style={{ paddingLeft: `${indent * 0.25}rem` }}
+              className="block" 
+              style={{ paddingLeft: `${indent * 0.25}rem`, marginBottom: "0.5rem" }}
             >
-              <span className="font-mono text-[#c49a2a] text-[10px] select-none flex-shrink-0">
+              <span className="font-mono text-[#c49a2a] text-[10px] select-none inline-block mr-2">
                 {trimmed.match(/^\d+\./)?.[0]}
               </span>
               <span className="font-sans text-[11px] leading-relaxed text-muted-foreground/90">
@@ -49,10 +49,10 @@ function RenderMarkdown({ text }: { text: string }) {
           return (
             <div 
               key={idx} 
-              className="flex gap-2" 
-              style={{ paddingLeft: `${indent * 0.25}rem` }}
+              className="block" 
+              style={{ paddingLeft: `${indent * 0.25}rem`, marginBottom: "0.5rem" }}
             >
-              <span className="font-mono text-[#c49a2a] text-[10px] select-none flex-shrink-0">
+              <span className="font-mono text-[#c49a2a] text-[10px] select-none inline-block mr-2">
                 ➜
               </span>
               <span className="font-sans text-[11px] leading-relaxed text-muted-foreground/90">
@@ -64,12 +64,12 @@ function RenderMarkdown({ text }: { text: string }) {
         
         // Render empty lines as spacing
         if (trimmed === "") {
-          return <div key={idx} className="h-1" />;
+          return <div key={idx} className="h-2" />;
         }
         
         // Default text line
         return (
-          <p key={idx} className="font-sans text-[11px] leading-relaxed text-muted-foreground/90">
+          <p key={idx} className="font-sans text-[11px] leading-relaxed text-muted-foreground/90 block mb-2">
             {renderInlineFormatting(line)}
           </p>
         );
@@ -83,20 +83,20 @@ function renderInlineFormatting(text: string) {
   const parts: React.ReactNode[] = [];
   let currentText = text;
   let keyIdx = 0;
-
+  
   while (currentText.length > 0) {
     const boldMatch = currentText.match(/\*\*(.*?)\*\*/);
     const codeMatch = currentText.match(/`(.*?)`/);
-
+    
     // Find the first match
     const boldIndex = boldMatch?.index !== undefined ? boldMatch.index : Infinity;
     const codeIndex = codeMatch?.index !== undefined ? codeMatch.index : Infinity;
-
+    
     if (boldIndex === Infinity && codeIndex === Infinity) {
       parts.push(<span key={keyIdx++}>{currentText}</span>);
       break;
     }
-
+    
     if (boldIndex < codeIndex && boldMatch) {
       // Add text before bold
       if (boldIndex > 0) {
@@ -123,7 +123,7 @@ function renderInlineFormatting(text: string) {
       currentText = currentText.substring(codeIndex + codeMatch[0].length);
     }
   }
-
+  
   return parts;
 }
 
@@ -158,14 +158,14 @@ export default function CorpusPanel({ corpusRefs, corpusData, onClose }: CorpusP
         </button>
       </div>
 
-      {/* Panel Body */}
-      <div className="flex-1 overflow-y-auto p-6 flex flex-col gap-6 custom-scrollbar">
+      {/* Panel Body - using block with space-y-6 instead of flex-col to avoid flexbox collapse bugs */}
+      <div className="flex-1 overflow-y-auto p-6 block space-y-6 custom-scrollbar">
         {corpusData.map((entry) => {
           const isReferenced = referencedSet.has(entry.concept_id);
           return (
             <div
               key={entry.concept_id}
-              className={`p-4 border transition-all duration-300 flex flex-col gap-2.5 ${
+              className={`p-4 border transition-all duration-300 block space-y-3 ${
                 isReferenced
                   ? "border-[#c49a2a]/40 bg-[#c49a2a]/5 shadow-[0_0_15px_rgba(196,154,42,0.05)]"
                   : "border-border/10 bg-card/5"
@@ -181,7 +181,7 @@ export default function CorpusPanel({ corpusRefs, corpusData, onClose }: CorpusP
                   </span>
                 )}
               </div>
-              <div className="font-sans text-[11px] leading-relaxed text-muted-foreground/90 max-w-none">
+              <div className="font-sans text-[11px] leading-relaxed text-muted-foreground/90 max-w-none block">
                 <RenderMarkdown text={entry.text} />
               </div>
             </div>
