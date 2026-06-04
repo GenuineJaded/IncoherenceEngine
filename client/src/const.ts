@@ -8,24 +8,25 @@ export { CORPUS_DATA, FAILURE_MODES };
 // Both the requested top 5 models and the free tier models (cleaned for visual symmetry)
 export const OPENROUTER_MODELS = [
   // Top 5 High-Traffic Models
-  { id: "xiaomi/mimo-v2-pro", name: "MiMo-V2-Pro" },
+  { id: "xiaomi/mimo-v2.5-pro", name: "MiMo-V2.5-Pro" },
   { id: "anthropic/claude-sonnet-4.6", name: "Claude Sonnet 4.6" },
   { id: "minimax/minimax-m2.7", name: "MiniMax M2.7" },
   { id: "deepseek/deepseek-v3.2", name: "DeepSeek V3.2" },
   { id: "qwen/qwen3.6-plus", name: "Qwen 3.6 Plus" },
   
   // Free Tier Models
-  { id: "google/gemini-2.5-flash:free", name: "Gemini 2.5 Flash (Free)" },
-  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B (Free)" },
-  { id: "qwen/qwen-2.5-72b-instruct:free", name: "Qwen 2.5 72B (Free)" },
-  { id: "deepseek/deepseek-chat:free", name: "DeepSeek V3 (Free)" },
-  { id: "deepseek/deepseek-r1:free", name: "DeepSeek R1 (Free)" }
+  { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B" },
+  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B" },
+  { id: "qwen/qwen3-next-80b-a3b-instruct:free", name: "Qwen3 Next 80B" },
+  { id: "qwen/qwen3-coder:free", name: "Qwen3 Coder" },
+  { id: "moonshotai/kimi-k2.6:free", name: "Kimi K2.6" },
+  { id: "z-ai/glm-4.5-air:free", name: "GLM 4.5 Air" }
 ];
 
-export const DEFAULT_PRIMARY_MODEL = "google/gemini-2.5-flash:free";
+export const DEFAULT_PRIMARY_MODEL = "google/gemma-4-31b-it:free";
 export const DEFAULT_ANALYZERS = [
   "meta-llama/llama-3.3-70b-instruct:free",
-  "qwen/qwen-2.5-72b-instruct:free"
+  "qwen/qwen3-next-80b-a3b-instruct:free"
 ];
 
 // Helper to strip any non-ASCII or non-printable characters from the API key to prevent fetch header errors
