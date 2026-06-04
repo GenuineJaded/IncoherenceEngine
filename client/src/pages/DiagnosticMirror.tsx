@@ -26,14 +26,61 @@ interface DiagnosticMirrorProps {
   onLogout: () => void;
 }
 
+// Helper function to execute fetch requests with automatic retries on rate limits (HTTP 429)
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3, initialDelay = 1500): Promise<Response> {
+  let delay = initialDelay;
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const res = await fetch(url, options);
+      
+      // If we get a 429 rate limit error, wait and retry
+      if (res.status === 429) {
+        const data = await res.clone().json().catch(() => ({}));
+        const retryAfter = data?.error?.metadata?.retry_after_seconds || data?.error?.metadata?.retry_after_seconds_raw;
+        const waitTime = retryAfter ? (parseFloat(retryAfter) * 1000) + 500 : delay;
+        
+        console.warn(`[OpenRouter 429] Rate limited. Retrying in ${waitTime / 1000}s (Attempt ${attempt + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        delay *= 2; // Exponential backoff for subsequent attempts
+        continue;
+      }
+      
+      return res;
+    } catch (err) {
+      if (attempt === maxRetries - 1) throw err;
+      console.warn(`[Network Error] Failed request. Retrying in ${delay / 1000}s...`, err);
+      await new Promise(resolve => setTimeout(resolve, delay));
+      delay *= 2;
+    }
+  }
+  return fetch(url, options); // final fallback
+}
+
 export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorProps) {
-  // Config state
-  const [primaryModel, setPrimaryModel] = useState(() => localStorage.getItem("primary_model") || DEFAULT_PRIMARY_MODEL);
+  // Config state with automatic localStorage migrations for deprecated/dead models
+  const [primaryModel, setPrimaryModel] = useState(() => {
+    const stored = localStorage.getItem("primary_model");
+    if (!stored) return DEFAULT_PRIMARY_MODEL;
+    // Auto-migrate deprecated models
+    if (stored === "xiaomi/mimo-v2-pro") {
+      console.log("Migrating deprecated primary model: xiaomi/mimo-v2-pro -> xiaomi/mimo-v2.5-pro");
+      return "xiaomi/mimo-v2.5-pro";
+    }
+    // Verify that the stored model actually exists in our available list
+    const exists = OPENROUTER_MODELS.some(m => m.id === stored);
+    return exists ? stored : DEFAULT_PRIMARY_MODEL;
+  });
+
   const [analyzers, setAnalyzers] = useState<string[]>(() => {
     const saved = localStorage.getItem("analyzers_ids");
     if (saved) {
       try {
-        return JSON.parse(saved);
+        const parsed = JSON.parse(saved);
+        if (Array.isArray(parsed)) {
+          // Filter out any models that no longer exist in our active list (e.g. qwen-2.5-72b-instruct:free)
+          const valid = parsed.filter(id => OPENROUTER_MODELS.some(m => m.id === id));
+          if (valid.length > 0) return valid;
+        }
       } catch (e) {
         // fallback
       }
@@ -119,8 +166,8 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
     try {
         const cleanKey = sanitizeApiKey(apiKey);
         
-        // 1. Fetch Primary Response
-        const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+        // 1. Fetch Primary Response with automatic retries on rate limits (429)
+        const response = await fetchWithRetry("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
             "Authorization": `Bearer ${cleanKey}`,
@@ -214,7 +261,8 @@ Return a JSON object with this exact structure:
 Only return JSON. Do not include markdown blocks like \`\`\`json.`;
 
           try {
-            const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
+            // Call with automatic retries on rate limits (429)
+            const res = await fetchWithRetry("https://openrouter.ai/api/v1/chat/completions", {
               method: "POST",
               headers: {
                 "Authorization": `Bearer ${cleanKey}`,
