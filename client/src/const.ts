@@ -5,14 +5,14 @@ export const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 export { CORPUS_DATA, FAILURE_MODES };
 
-// Both the requested top 5 models and the free tier models
+// Both the requested top 5 models and the free tier models (cleaned for visual symmetry)
 export const OPENROUTER_MODELS = [
   // Top 5 High-Traffic Models
-  { id: "xiaomi/mimo-v2-pro", name: "MiMo-V2-Pro (Xiaomi)" },
-  { id: "anthropic/claude-sonnet-4.6", name: "Claude Sonnet 4.6 (Anthropic)" },
+  { id: "xiaomi/mimo-v2-pro", name: "MiMo-V2-Pro" },
+  { id: "anthropic/claude-sonnet-4.6", name: "Claude Sonnet 4.6" },
   { id: "minimax/minimax-m2.7", name: "MiniMax M2.7" },
   { id: "deepseek/deepseek-v3.2", name: "DeepSeek V3.2" },
-  { id: "qwen/qwen3.6-plus", name: "Qwen 3.6 Plus (Alibaba)" },
+  { id: "qwen/qwen3.6-plus", name: "Qwen 3.6 Plus" },
   
   // Free Tier Models
   { id: "google/gemini-2.5-flash:free", name: "Gemini 2.5 Flash (Free)" },
@@ -27,6 +27,14 @@ export const DEFAULT_ANALYZERS = [
   "meta-llama/llama-3.3-70b-instruct:free",
   "qwen/qwen-2.5-72b-instruct:free"
 ];
+
+// Helper to strip any non-ASCII or non-printable characters from the API key to prevent fetch header errors
+export function sanitizeApiKey(key: string): string {
+  if (!key) return "";
+  // Keep ONLY standard alphanumeric characters, underscores, colons, and hyphens.
+  // This completely strips out invisible unicode spaces, linebreaks, or non ISO-8859-1 characters.
+  return key.replace(/[^a-zA-Z0-9_:\-]/g, "").trim();
+}
 
 // The Primary system prompt, fully informed by the Tri-Mind framework and Paradox Tolerance
 export const SYSTEM_PROMPT = `You are a primary conversational model. Respond to the user's message naturally, but be aware that you are operating inside a diagnostic mirror. 

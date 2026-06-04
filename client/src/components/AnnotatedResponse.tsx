@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { FAILURE_MODES, FailureModeKey } from "../../../shared/const";
+import { FAILURE_MODES, FailureModeKey } from "@shared/const";
 import { HelpCircle, Sparkles, ShieldAlert, Cpu } from "lucide-react";
 
 export interface Annotation {

@@ -6,7 +6,7 @@ import {
   HelpCircle, ChevronRight, AlertCircle, RefreshCw, EyeOff, Eye, Sparkles
 } from "lucide-react";
 import { 
-  OPENROUTER_MODELS, DEFAULT_PRIMARY_MODEL, DEFAULT_ANALYZERS, CORPUS_DATA, SYSTEM_PROMPT
+  OPENROUTER_MODELS, DEFAULT_PRIMARY_MODEL, DEFAULT_ANALYZERS, CORPUS_DATA, SYSTEM_PROMPT, sanitizeApiKey
 } from "../const";
 import AnnotatedResponse, { Annotation } from "../components/AnnotatedResponse";
 import JRatioMeter from "../components/JRatioMeter";
@@ -117,11 +117,13 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
     setLoading(true);
 
     try {
+        const cleanKey = sanitizeApiKey(apiKey);
+        
         // 1. Fetch Primary Response
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${apiKey.trim()}`,
+            "Authorization": `Bearer ${cleanKey}`,
             "Content-Type": "application/json"
           },
           body: JSON.stringify({
@@ -205,7 +207,7 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
             const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
               method: "POST",
               headers: {
-                "Authorization": `Bearer ${apiKey.trim()}`,
+                "Authorization": `Bearer ${cleanKey}`,
                 "Content-Type": "application/json"
               },
               body: JSON.stringify({
