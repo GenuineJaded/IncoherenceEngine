@@ -121,10 +121,8 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
           headers: {
-            "Authorization": `Bearer ${apiKey}`,
-            "Content-Type": "application/json",
-            "HTTP-Referer": window.location.origin,
-            "X-Title": "Incoherence Engine"
+            "Authorization": `Bearer ${apiKey.trim()}`,
+            "Content-Type": "application/json"
           },
           body: JSON.stringify({
             model: primaryModel,
@@ -207,10 +205,8 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
             const res = await fetch("https://openrouter.ai/api/v1/chat/completions", {
               method: "POST",
               headers: {
-                "Authorization": `Bearer ${apiKey}`,
-                "Content-Type": "application/json",
-                "HTTP-Referer": window.location.origin,
-                "X-Title": `Incoherence Engine Excavation`
+                "Authorization": `Bearer ${apiKey.trim()}`,
+                "Content-Type": "application/json"
               },
               body: JSON.stringify({
                 model: analyzerId,
