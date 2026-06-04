@@ -63,7 +63,7 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
           <div className="flex flex-col gap-2 mt-2">
             <Button
               onClick={() => setStep("setup")}
-              className="w-full font-serif text-sm tracking-widest uppercase py-6 border border-primary/40 bg-primary/5 hover:bg-primary/15 text-primary hover:text-primary active:scale-[0.98] transition-all"
+              className="w-full font-serif text-sm tracking-widest uppercase py-6 border border-[#c49a2a]/40 bg-[#c49a2a]/5 hover:bg-[#c49a2a]/15 text-[#c49a2a] hover:text-[#c49a2a] active:scale-[0.98] transition-all"
             >
               Free Version
               <ArrowRight className="w-4 h-4 ml-2" />
@@ -73,22 +73,23 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
           {/* Path 2: Direct Key Entry (Enter the Mirror) */}
           <form onSubmit={handleSubmit} className="flex flex-col gap-3 border-t border-border/10 pt-4">
             <div className="flex flex-col gap-2">
-              <label className="font-mono text-xs font-bold tracking-wider text-[#00ff66] uppercase flex items-center gap-2">
-                <KeyRound className="w-3.5 h-3.5 text-[#00ff66]" />
+              <label className="font-mono text-sm font-bold tracking-wider text-[#00ff66] uppercase flex items-center justify-center gap-2.5">
+                <KeyRound className="w-4 h-4 text-[#00ff66]" />
                 Enter the Mirror
+                <KeyRound className="w-4 h-4 text-[#00ff66]" />
               </label>
               <Input
                 type="password"
                 placeholder="PASTE OPENROUTER API KEY (sk-or-...)"
                 value={apiKey}
                 onChange={(e) => setApiKey(e.target.value)}
-                className="font-mono text-xs tracking-widest bg-background/50 border-border/40 focus:border-[#00ff66]/80 focus:ring-1 focus:ring-[#00ff66]/40 h-11"
+                className="font-mono text-xs tracking-widest bg-background/50 border-border/40 focus:border-[#00ff66]/80 focus:ring-1 focus:ring-[#00ff66]/40 h-11 text-center"
               />
             </div>
 
             <Button
               type="submit"
-              className="w-full font-serif text-xs tracking-widest uppercase py-5 border border-border/40 bg-white/5 hover:bg-white/10 text-foreground active:scale-[0.98] transition-all"
+              className="w-full font-serif text-xs tracking-widest uppercase py-5 border border-[#c49a2a]/40 bg-[#c49a2a]/5 hover:bg-[#c49a2a]/15 text-[#c49a2a] hover:text-[#c49a2a] active:scale-[0.98] transition-all"
             >
               Enter In
             </Button>
