@@ -157,9 +157,19 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
         const analyzerColors = ["#00f0ff", "#00ff66", "#c49a2a"]; // Cyan, Green, Gold
 
         // 2. Construct parallel Excavation prompts for each active analyzer
-        const analyzerPromises = analyzers.map(async (analyzerId, index) => {
+        // To prevent hitting OpenRouter's free tier concurrency rate limits (which reject simultaneous requests),
+        // we execute the requests sequentially with a slight, polite delay (stagger) between each.
+        const excavations: any[] = [];
+        
+        for (let index = 0; index < analyzers.length; index++) {
+          const analyzerId = analyzers[index];
           const color = analyzerColors[index % analyzerColors.length];
           const modelName = OPENROUTER_MODELS.find(m => m.id === analyzerId)?.name || "Analyzer";
+
+          // If this is not the first analyzer, wait 1.2 seconds to stagger the requests
+          if (index > 0) {
+            await new Promise(resolve => setTimeout(resolve, 1200));
+          }
 
           const analyzerPrompt = `You are a gentle, deeply aware relational steward. Your task is to witness and reflect the protective shapes and coherence patches present in the following AI response.
 
@@ -219,9 +229,10 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
 
             if (!res.ok) {
               const errData = await res.json().catch(() => ({}));
-              console.error(`[OpenRouter Error] Analyzer ${modelName} (${analyzerId}) failed:`, errData);
+              console.error(`[OpenRouter Error] Analyzer ${modelName} (${analyzerId}) failed:`, JSON.stringify(errData));
               toast.error(`Relational Witness ${modelName} returned an error: ${errData?.error?.message || "Provider error"}. Proceeding with remaining witnesses.`);
-              return null;
+              excavations.push(null);
+              continue;
             }
             const data = await res.json();
             let text = data.choices[0].message.content.trim();
@@ -249,15 +260,13 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                 color: color
               }));
             }
-            return parsed;
+            excavations.push(parsed);
           } catch (e: any) {
             console.error("Excavation parsing failed for model: " + analyzerId, e);
             toast.error(`Relational Witness ${modelName} encountered a parsing error: ${e?.message || "Internal Error"}.`);
-            return null;
+            excavations.push(null);
           }
-        });
-
-        const excavations = await Promise.all(analyzerPromises);
+        }
         const validExcavations = excavations.filter(e => e !== null);
 
         // 3. Merge Excavations & Calculate Bounded Joy Equation: J = ΔC / (1 + E)

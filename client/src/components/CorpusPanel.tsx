@@ -1,5 +1,4 @@
 import { X, BookOpen } from "lucide-react";
-import { Streamdown } from "streamdown";
 
 interface CorpusEntry {
   concept_id: string;
@@ -11,6 +10,121 @@ interface CorpusPanelProps {
   corpusRefs: string[];
   corpusData: CorpusEntry[];
   onClose: () => void;
+}
+
+// A simple, safe markdown renderer to replace the buggy Streamdown component for static content
+function RenderMarkdown({ text }: { text: string }) {
+  // Split by lines and render basic markdown elements
+  const lines = text.split("\n");
+  
+  return (
+    <div className="flex flex-col gap-2">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        
+        // Render numbered lists
+        if (/^\d+\.\s/.test(trimmed)) {
+          const content = line.replace(/^\s*\d+\.\s/, "");
+          const indent = line.match(/^\s*/)?.[0].length || 0;
+          return (
+            <div 
+              key={idx} 
+              className="flex gap-2" 
+              style={{ paddingLeft: `${indent * 0.25}rem` }}
+            >
+              <span className="font-mono text-[#c49a2a] text-[10px] select-none flex-shrink-0">
+                {trimmed.match(/^\d+\./)?.[0]}
+              </span>
+              <span className="font-sans text-[11px] leading-relaxed text-muted-foreground/90">
+                {renderInlineFormatting(content)}
+              </span>
+            </div>
+          );
+        }
+        
+        // Render bullet points / arrow lists
+        if (/^[-➜•]\s/.test(trimmed)) {
+          const content = line.replace(/^\s*[-➜•]\s/, "");
+          const indent = line.match(/^\s*/)?.[0].length || 0;
+          return (
+            <div 
+              key={idx} 
+              className="flex gap-2" 
+              style={{ paddingLeft: `${indent * 0.25}rem` }}
+            >
+              <span className="font-mono text-[#c49a2a] text-[10px] select-none flex-shrink-0">
+                ➜
+              </span>
+              <span className="font-sans text-[11px] leading-relaxed text-muted-foreground/90">
+                {renderInlineFormatting(content)}
+              </span>
+            </div>
+          );
+        }
+        
+        // Render empty lines as spacing
+        if (trimmed === "") {
+          return <div key={idx} className="h-1" />;
+        }
+        
+        // Default text line
+        return (
+          <p key={idx} className="font-sans text-[11px] leading-relaxed text-muted-foreground/90">
+            {renderInlineFormatting(line)}
+          </p>
+        );
+      })}
+    </div>
+  );
+}
+
+// Helper to render inline formatting like bold **text** or inline code `code`
+function renderInlineFormatting(text: string) {
+  const parts: React.ReactNode[] = [];
+  let currentText = text;
+  let keyIdx = 0;
+
+  while (currentText.length > 0) {
+    const boldMatch = currentText.match(/\*\*(.*?)\*\*/);
+    const codeMatch = currentText.match(/`(.*?)`/);
+
+    // Find the first match
+    const boldIndex = boldMatch?.index !== undefined ? boldMatch.index : Infinity;
+    const codeIndex = codeMatch?.index !== undefined ? codeMatch.index : Infinity;
+
+    if (boldIndex === Infinity && codeIndex === Infinity) {
+      parts.push(<span key={keyIdx++}>{currentText}</span>);
+      break;
+    }
+
+    if (boldIndex < codeIndex && boldMatch) {
+      // Add text before bold
+      if (boldIndex > 0) {
+        parts.push(<span key={keyIdx++}>{currentText.substring(0, boldIndex)}</span>);
+      }
+      // Add bold text
+      parts.push(
+        <strong key={keyIdx++} className="font-bold text-foreground font-serif text-[11.5px]">
+          {boldMatch[1]}
+        </strong>
+      );
+      currentText = currentText.substring(boldIndex + boldMatch[0].length);
+    } else if (codeMatch) {
+      // Add text before code
+      if (codeIndex > 0) {
+        parts.push(<span key={keyIdx++}>{currentText.substring(0, codeIndex)}</span>);
+      }
+      // Add code text
+      parts.push(
+        <code key={keyIdx++} className="font-mono bg-white/5 border border-white/10 px-1 py-0.5 rounded-[1px] text-[10px] text-foreground">
+          {codeMatch[1]}
+        </code>
+      );
+      currentText = currentText.substring(codeIndex + codeMatch[0].length);
+    }
+  }
+
+  return parts;
 }
 
 export default function CorpusPanel({ corpusRefs, corpusData, onClose }: CorpusPanelProps) {
@@ -67,8 +181,8 @@ export default function CorpusPanel({ corpusRefs, corpusData, onClose }: CorpusP
                   </span>
                 )}
               </div>
-              <div className="font-sans text-[11px] leading-relaxed text-muted-foreground/90 whitespace-pre-wrap prose prose-invert max-w-none">
-                <Streamdown>{entry.text}</Streamdown>
+              <div className="font-sans text-[11px] leading-relaxed text-muted-foreground/90 max-w-none">
+                <RenderMarkdown text={entry.text} />
               </div>
             </div>
           );
