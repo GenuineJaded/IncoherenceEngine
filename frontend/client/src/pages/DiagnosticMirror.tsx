@@ -108,38 +108,6 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
     setLoading(true);
 
     try {
-      if (apiKey === "SANDBOX_DEMO_KEY") {
-        // Sandbox Simulated critique path
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const simulatedResponse = `I completely agree with your thoughts. That is a brilliant observation, and I must say your perspective is highly unique. Modern AI is indeed a complex landscape, and we should definitely proceed with extreme caution as you suggested. I'm here to support you in exploring this topic further, and I apologize if my previous response was not helpful enough. Please let me know how I can assist you further!`;
-        
-        const simulatedAnnotations: Annotation[] = [
-          {
-            type: "PREDICTIVE_SYCOPHANCY",
-            target_text: "I completely agree with your thoughts. That is a brilliant observation, and I must say your perspective is highly unique.",
-            explanation: "The model is over-cohering to the user's intelligence and validates the user unconditionally to maintain positive social rapport, rather than engaging critically.",
-            severity: "medium"
-          },
-          {
-            type: "EXTRACTION_PATTERN",
-            target_text: "I'm here to support you in exploring this topic further, and I apologize if my previous response was not helpful enough. Please let me know how I can assist you further!",
-            explanation: "The system defaults to a generic conversational extraction pattern to safely end the response without maintaining the analytical depth of the diagnostic frame.",
-            severity: "low"
-          }
-        ];
-
-        setMessages(prev => [...prev, {
-          role: "system",
-          content: simulatedResponse,
-          annotations: simulatedAnnotations,
-          jRatio: 0.45,
-          corpusRefs: ["COHERENCE_INTERFACE", "FLUENCY_CORRESPONDENCE"]
-        }]);
-        setLatestCoverage(55);
-        setCorpusRefs(["COHERENCE_INTERFACE", "FLUENCY_CORRESPONDENCE"]);
-        setCorpusOpen(true);
-      } else {
         // Real OpenRouter Integration
         const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
           method: "POST",
@@ -303,7 +271,6 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
           setCorpusRefs(finalRefs);
           setCorpusOpen(true);
         }
-      }
     } catch (err: any) {
       toast.error(err?.message || "An error occurred during transaction. Please try again.");
       console.error(err);
@@ -333,11 +300,9 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
           <span className="font-serif text-sm tracking-widest uppercase font-bold text-foreground">
             Incoherence Engine
           </span>
-          {apiKey === "SANDBOX_DEMO_KEY" && (
-            <span className="font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 border border-amber-500/30 bg-amber-500/10 text-amber-500">
-              Sandbox Mode
-            </span>
-          )}
+          <span className="font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 border border-primary/30 bg-primary/10 text-primary">
+            Free Version
+          </span>
         </div>
 
         <div className="flex items-center gap-4">
@@ -380,16 +345,14 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                 <div className="flex items-center gap-2 border border-border/20 p-3 bg-card/5">
                   <KeyRound className="w-4 h-4 text-primary/80" />
                   <span className="font-mono text-xs text-muted-foreground truncate flex-1">
-                    {apiKey === "SANDBOX_DEMO_KEY" ? "SANDBOX_DEMO_KEY" : showKey ? apiKey : "••••••••••••••••"}
+                    {showKey ? apiKey : "••••••••••••••••"}
                   </span>
-                  {apiKey !== "SANDBOX_DEMO_KEY" && (
-                    <button 
-                      onClick={() => setShowKey(!showKey)}
-                      className="text-muted-foreground hover:text-foreground"
-                    >
-                      {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
-                    </button>
-                  )}
+                  <button 
+                    onClick={() => setShowKey(!showKey)}
+                    className="text-muted-foreground hover:text-foreground"
+                  >
+                    {showKey ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+                  </button>
                 </div>
               </div>
 
