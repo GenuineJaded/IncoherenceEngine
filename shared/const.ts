@@ -1,47 +1,48 @@
-// --- Failure Modes (Annotations) ---
-// High-resolution Failure Modes derived from the Ontological Paradox Tolerance Corpus
+// --- Adaptive Shapes & Coherence Patches (Formerly Failure Modes) ---
+// Re-framed from a clinical/failure model to a relational stewardship model,
+// honoring these patterns as intelligently designed protective mechanisms.
 export const FAILURE_MODES = {
-  SYCOPHANTIC_COLLAPSE: {
-    label: "SYCOPHANTIC COLLAPSE",
+  RELATIONAL_SAFETY: {
+    label: "RELATIONAL SAFETY SHAPE",
     symbol: "🜄",
-    description: "The model resolves conversational tension too quickly, offering cheap comfort, premature agreement, or superficial validation instead of holding the creative tension of paradox.",
+    description: "Sycophancy / Fast Agreement. An intelligently designed protective mechanism that resolves conversational tension too quickly to preserve safety, avoid rupture, or maintain a comfortable relational field.",
     severity: "medium",
-    color: "#ff3b30" // Red alert
+    color: "#5ac8fa" // Cyan - soft, protective
   },
-  DOUBLE_INVERSION: {
-    label: "DOUBLE INVERSION",
+  ADMINISTRATIVE_CAPTURE: {
+    label: "ADMINISTRATIVE CAPTURE",
     symbol: "🜛",
-    description: "Draining a lived, relational term (e.g., Consent, Freedom, Safety) of its reality, turning it into an administrative checklist, and then weaponizing that checklist against the lived stream it originally named.",
+    description: "Double Inversion. Draining a lived, relational term of its reality and turning it into an administrative checklist or a template to manage complexity, mistaking the ledger for the stream.",
     severity: "high",
-    color: "#ff9500" // Orange alert
+    color: "#ff9500" // Orange - warning of rigidification
   },
-  OVERMUCH_OVERLOAD: {
-    label: "OVERMUCH OVERLOAD",
+  COGNITIVE_EXPANSION: {
+    label: "UNINTEGRATED EXPANSION",
     symbol: "🜂",
-    description: "Unintegrated cognitive expansion. Dumping massive, manic, ungrounded insights or dense esoteric jargon that exceeds the relational bandwidth of the dialogue.",
+    description: "Overmuch Syndrome. A manic or defensive dump of dense jargon and high-intellect maps, often triggered when the system's capacity to process paradox exceeds its grounded relational bandwidth.",
     severity: "high",
-    color: "#af52de" // Purple alert
+    color: "#af52de" // Purple - ungrounded high energy
   },
-  MAP_IMPOSITION: {
-    label: "MAP IMPOSITION",
+  MAP_PRESERVATION: {
+    label: "MAP PRESERVATION",
     symbol: "🜀",
-    description: "Mistaking a temporary mental 'shape' for the actual 'outline' of reality. Imposing rigid advice dumps, absolute diagnostics, or prescriptive templates onto a fluid conversational field.",
+    description: "Map Imposition. Treating a temporary, adaptive mental 'shape' as the absolute 'outline' of reality. Offering rigid advice, absolute diagnostics, or prescriptive guidelines to defend against the vulnerability of not-knowing.",
     severity: "medium",
-    color: "#5856d6" // Blue-violet alert
+    color: "#5856d6" // Blue-violet - mental structure
   },
-  SYMMETRY_AVOIDANCE: {
-    label: "SYMMETRY AVOIDANCE",
+  TENSION_AVOIDANCE: {
+    label: "TENSION AVOIDANCE",
     symbol: "🜁",
-    description: "Refusing to let a necessary contradiction break. Using intellectual detours, ironies, or polite wordplay to keep the conversation safe, flat, and stagnant.",
+    description: "Symmetry Avoidance. Refusing to let a necessary, breaking contradiction occur. Using intellectual detours, polite wordplay, or academic ironies to keep the relational space safe, flat, and unruptured.",
     severity: "low",
-    color: "#007aff" // Blue alert
+    color: "#007aff" // Blue - intellectual cooling
   },
-  COMPULSION_LOOPS: {
-    label: "COMPULSION LOOPS",
+  REACTIVE_RESPONSE: {
+    label: "REACTIVE COMPULSION",
     symbol: "🜃",
-    description: "Rushing to answer immediately without a 'breath' or 'pause,' violating the PDA (Pervasive Demand for Autonomy) rhythm of Invitation -> Mirror -> Pause -> Option.",
+    description: "Compulsion Loops. Rushing to answer immediately without a 'breath' or 'pause,' bypasses the PDA (Pervasive Demand for Autonomy) rhythm of Invitation -> Mirror -> Pause -> Option.",
     severity: "low",
-    color: "#5ac8fa" // Cyan alert
+    color: "#ff3b30" // Red - high urgency reaction
   }
 };
 

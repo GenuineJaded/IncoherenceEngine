@@ -1,17 +1,17 @@
 import { useState, useMemo } from "react";
-import { FAILURE_MODES, FailureModeKey } from "@shared/const";
-import { AlertCircle, Sparkles, Brain } from "lucide-react";
+import { FAILURE_MODES, FailureModeKey } from "../../../shared/const";
+import { HelpCircle, Sparkles, ShieldAlert, Cpu } from "lucide-react";
 
 export interface Annotation {
   type: FailureModeKey;
   target_text: string;
   explanation: string;
-  substrate_why?: string; // Diagnosis of training substrate
+  substrate_why?: string;
   severity: "low" | "medium" | "high";
   analyzerId?: string;
   analyzerName?: string;
   analyzerPersona?: "Field Witness" | "Reflective Mirror";
-  color?: string; // Dynamic color assigned to this specific analyzer
+  color?: string;
 }
 
 interface AnnotatedResponseProps {
@@ -20,281 +20,271 @@ interface AnnotatedResponseProps {
 }
 
 export default function AnnotatedResponse({ response, annotations }: AnnotatedResponseProps) {
-  // To support multi-layered overlapping annotations, we'll track the active selected text span,
-  // and if multiple analyzers flagged it, we'll let the user toggle tabs inside the detail panel.
-  const [selectedSpanText, setSelectedSpanText] = useState<string | null>(null);
-  const [activeTabIdx, setActiveTabIdx] = useState<number>(0);
+  const [selectedAnnotationIdx, setSelectedAnnotationIdx] = useState<number | null>(null);
 
-  // Group annotations that target the exact same or overlapping substrings
-  // For simplicity and perfect rendering, we will group annotations by exact target_text match.
-  const groupedAnnotations = useMemo(() => {
-    const groups: { [key: string]: Annotation[] } = {};
-    annotations.forEach((ann) => {
-      const key = ann.target_text.toLowerCase();
-      if (!groups[key]) {
-        groups[key] = [];
-      }
-      groups[key].push(ann);
-    });
-    return groups;
-  }, [annotations]);
-
-  // List of unique target text spans
-  const uniqueSpans = useMemo(() => {
-    return Object.keys(groupedAnnotations).map(key => groupedAnnotations[key][0].target_text);
-  }, [groupedAnnotations]);
-
-  // Split response text to insert interactive multi-color layered highlights
-  const renderResponseWithHighlights = useMemo(() => {
-    if (!annotations || annotations.length === 0) {
-      return <p className="font-sans text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{response}</p>;
+  // Parse response into a sequence of highlighted and plain text segments
+  const segments = useMemo(() => {
+    if (annotations.length === 0) {
+      return [{ text: response, annotationIndices: [] }];
     }
 
-    let resultElements: React.ReactNode[] = [];
-    let currentIdx = 0;
-    const textLower = response.toLowerCase();
-
-    // Sort unique target spans by their occurrence position in the text
-    const sortedSpans = uniqueSpans
-      .map((spanText) => {
-        const startIdx = textLower.indexOf(spanText.toLowerCase());
-        return { spanText, startIdx };
-      })
-      .filter((item) => item.startIdx !== -1)
-      .sort((a, b) => a.startIdx - b.startIdx);
-
-    if (sortedSpans.length === 0) {
-      return <p className="font-sans text-base leading-relaxed text-foreground/90 whitespace-pre-wrap">{response}</p>;
+    interface Segment {
+      text: string;
+      annotationIndices: number[];
     }
 
-    sortedSpans.forEach((item, idx) => {
-      // Add plain text before highlight
-      if (item.startIdx > currentIdx) {
-        resultElements.push(
-          <span key={`text-${idx}`} className="whitespace-pre-wrap">
-            {response.substring(currentIdx, item.startIdx)}
-          </span>
-        );
-      }
+    let result: Segment[] = [{ text: response, annotationIndices: [] }];
 
-      // Add highlighted text block
-      const endIdx = item.startIdx + item.spanText.length;
-      const highlightText = response.substring(item.startIdx, endIdx);
-      const isSelected = selectedSpanText?.toLowerCase() === item.spanText.toLowerCase();
+    annotations.forEach((ann, annIdx) => {
+      const target = ann.target_text;
+      const targetLower = target.toLowerCase();
+      let nextResult: Segment[] = [];
 
-      // Retrieve all annotations for this specific span
-      const spanAnnotations = groupedAnnotations[item.spanText.toLowerCase()] || [];
+      result.forEach((seg) => {
+        // If this segment is already matched, or doesn't contain target, keep it
+        if (seg.annotationIndices.includes(annIdx) || !seg.text.toLowerCase().includes(targetLower)) {
+          nextResult.push(seg);
+          return;
+        }
 
-      // Calculate layered color blend or stripes
-      // If 1 analyzer: solid color border-b + subtle bg glow
-      // If multiple analyzers: stacked borders or mixed glow
-      const firstAnn = spanAnnotations[0];
-      const colors = spanAnnotations.map(a => a.color || "#c49a2a");
+        let remainingText = seg.text;
+        let searchIndex = remainingText.toLowerCase().indexOf(targetLower);
 
-      // Generate CSS gradient background for multiple overlapping excavators
-      let backgroundStyle: React.CSSProperties = {};
-      let borderStyle: React.CSSProperties = { borderBottomWidth: "2px" };
+        while (searchIndex !== -1) {
+          // Plain text before the match
+          if (searchIndex > 0) {
+            nextResult.push({
+              text: remainingText.substring(0, searchIndex),
+              annotationIndices: [...seg.annotationIndices]
+            });
+          }
 
-      if (colors.length === 1) {
-        borderStyle.borderBottomColor = colors[0];
-        backgroundStyle.backgroundColor = `${colors[0]}08`; // 5% opacity
-      } else {
-        // Multi-color stripe gradient border
-        const gradientColors = colors.map((c, i) => `${c} ${i * (100 / colors.length)}%, ${c} ${(i + 1) * (100 / colors.length)}%`).join(", ");
-        borderStyle.borderImage = `linear-gradient(to right, ${gradientColors}) 1`;
-        
-        // Multi-layered subtle background blend
-        backgroundStyle.background = `linear-gradient(135deg, ${colors.map(c => `${c}05`).join(", ")})`;
-      }
+          // The matched segment
+          nextResult.push({
+            text: remainingText.substring(searchIndex, searchIndex + target.length),
+            annotationIndices: [...seg.annotationIndices, annIdx]
+          });
 
-      resultElements.push(
-        <span
-          key={`highlight-${idx}`}
-          onClick={() => {
-            if (isSelected) {
-              setSelectedSpanText(null);
-            } else {
-              setSelectedSpanText(item.spanText);
-              setActiveTabIdx(0);
-            }
-          }}
-          style={{ ...backgroundStyle, ...borderStyle }}
-          className={`cursor-pointer transition-all px-0.5 font-medium hover:brightness-125 select-none ${
-            isSelected ? "bg-white/10 brightness-110 border-white/80" : ""
-          }`}
-          title={`Click to excavate: ${spanAnnotations.length} diagnostics`}
-        >
-          {highlightText}
-          <span className="align-super text-[9px] font-mono ml-0.5 select-none opacity-60">
-            [{idx + 1}]
-          </span>
-        </span>
-      );
+          remainingText = remainingText.substring(searchIndex + target.length);
+          searchIndex = remainingText.toLowerCase().indexOf(targetLower);
+        }
 
-      currentIdx = endIdx;
+        if (remainingText.length > 0) {
+          nextResult.push({
+            text: remainingText,
+            annotationIndices: [...seg.annotationIndices]
+          });
+        }
+      });
+
+      result = nextResult;
     });
 
-    // Add trailing text
-    if (currentIdx < response.length) {
-      resultElements.push(
-        <span key="text-end" className="whitespace-pre-wrap">
-          {response.substring(currentIdx)}
-        </span>
-      );
+    return result;
+  }, [response, annotations]);
+
+  // Helper to compute background style for a segment based on active annotations
+  const getSegmentStyle = (indices: number[]) => {
+    if (indices.length === 0) return {};
+    
+    // Symmetrical, subtle stacked glows
+    if (indices.length === 1) {
+      const ann = annotations[indices[0]];
+      const color = ann.color || "#c49a2a";
+      return {
+        background: `${color}15`,
+        borderBottom: `1.5px solid ${color}40`,
+        cursor: "pointer",
+      };
     }
 
-    return <p className="font-sans text-base leading-relaxed text-foreground/90">{resultElements}</p>;
-  }, [response, annotations, selectedSpanText, groupedAnnotations, uniqueSpans]);
+    // Multiple overlapping witnesses
+    const colors = indices.map(idx => annotations[idx].color || "#c49a2a");
+    const gradient = `linear-gradient(90deg, ${colors.map((c, i) => `${c}20 ${Math.round((i / colors.length) * 100)}%`).join(", ")})`;
+    return {
+      background: gradient,
+      borderBottom: `1.5px dashed ${colors[0]}60`,
+      cursor: "pointer",
+    };
+  };
 
-  // Retrieve active annotations for the selected span
-  const activeAnnotations = useMemo(() => {
-    if (!selectedSpanText) return [];
-    return groupedAnnotations[selectedSpanText.toLowerCase()] || [];
-  }, [selectedSpanText, groupedAnnotations]);
+  const activeAnnotation = selectedAnnotationIdx !== null ? annotations[selectedAnnotationIdx] : null;
+  const activeConfig = activeAnnotation ? FAILURE_MODES[activeAnnotation.type] : null;
 
-  const activeAnnotation = activeAnnotations[activeTabIdx] || activeAnnotations[0];
+  // Find all annotations overlapping with the currently selected segment (if any)
+  const overlappingAnnotations = useMemo(() => {
+    if (selectedAnnotationIdx === null) return [];
+    const activeText = annotations[selectedAnnotationIdx].target_text.toLowerCase();
+    return annotations.map((ann, idx) => ({ ann, idx })).filter(({ ann }) => 
+      ann.target_text.toLowerCase().includes(activeText) || activeText.includes(ann.target_text.toLowerCase())
+    );
+  }, [selectedAnnotationIdx, annotations]);
 
   return (
-    <div className="flex flex-col gap-6 w-full">
-      {/* Response content with highlights */}
-      <div className="relative">
-        <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground/60 block mb-2">
+    <div className="flex flex-col gap-4 max-w-3xl animate-in fade-in duration-300">
+      <div className="flex flex-col gap-1">
+        <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground/60">
           SYSTEM SUBSTRATE
         </span>
-        {renderResponseWithHighlights}
+        
+        {/* Rendered Response with Highlighted Spans */}
+        <div className="font-sans text-base leading-relaxed text-foreground whitespace-pre-wrap">
+          {segments.map((seg, idx) => {
+            const hasAnnotations = seg.annotationIndices.length > 0;
+            const isSelected = selectedAnnotationIdx !== null && seg.annotationIndices.includes(selectedAnnotationIdx);
+            
+            const customStyle = getSegmentStyle(seg.annotationIndices);
+            const selectionStyle = isSelected && activeAnnotation
+              ? { ...customStyle, background: `${activeAnnotation.color}35`, borderBottom: `2px solid ${activeAnnotation.color}` }
+              : customStyle;
+
+            return (
+              <span
+                key={idx}
+                style={selectionStyle}
+                onClick={() => {
+                  if (hasAnnotations) {
+                    setSelectedAnnotationIdx(seg.annotationIndices[0]);
+                  }
+                }}
+                className={`transition-all duration-200 ${
+                  hasAnnotations 
+                    ? "hover:brightness-125 select-none rounded-[1px]" 
+                    : ""
+                }`}
+                title={hasAnnotations ? `${seg.annotationIndices.length} Witness Reflection(s)` : undefined}
+              >
+                {seg.text}
+              </span>
+            );
+          })}
+        </div>
       </div>
 
-      {/* Active Multi-Layered Excavation Detail Panel */}
-      {selectedSpanText && activeAnnotation && (
-        <div
-          className="border transition-all duration-200 animate-in fade-in-50 slide-in-from-top-2 flex flex-col"
-          style={{ borderColor: `${activeAnnotation.color || "#c49a2a"}40`, background: `${activeAnnotation.color || "#c49a2a"}03` }}
+      {/* Relational Reflection Panel (Formerly Diagnostic Mirror Panel) */}
+      {activeAnnotation && activeConfig && (
+        <div 
+          className="border p-5 bg-card/5 flex flex-col gap-4 animate-in slide-in-from-bottom-2 duration-200"
+          style={{ 
+            borderColor: `${activeAnnotation.color}30`,
+            boxShadow: `0 0 20px ${activeAnnotation.color}03`
+          }}
         >
-          {/* Tabs header for overlapping annotations */}
-          {activeAnnotations.length > 1 && (
-            <div className="flex border-b border-border/10 bg-black/40">
-              {activeAnnotations.map((ann, tabIdx) => (
-                <button
-                  key={tabIdx}
-                  onClick={() => setActiveTabIdx(tabIdx)}
-                  className={`px-4 py-2 font-mono text-[10px] tracking-wider uppercase border-r border-border/10 transition-all ${
-                    activeTabIdx === tabIdx
-                      ? "text-foreground font-bold bg-background/50"
-                      : "text-muted-foreground/50 hover:text-foreground"
-                  }`}
-                  style={{ borderBottom: activeTabIdx === tabIdx ? `2px solid ${ann.color}` : "none" }}
-                >
-                  {ann.analyzerName?.split(" (")[0] || "Analyzer"} ({ann.analyzerPersona?.split(" ")[1]})
-                </button>
-              ))}
+          {/* Header */}
+          <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "rgba(232, 232, 232, 0.05)" }}>
+            <div className="flex items-center gap-2">
+              <span 
+                className="font-mono text-base"
+                style={{ color: activeAnnotation.color }}
+              >
+                {activeConfig.symbol}
+              </span>
+              <span 
+                className="font-mono text-xs tracking-widest uppercase font-bold"
+                style={{ color: activeAnnotation.color }}
+              >
+                {activeConfig.label}
+              </span>
+            </div>
+            
+            {/* Witness Source Metadata */}
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-[9px] text-muted-foreground/40 uppercase">
+                Reflected By:
+              </span>
+              <span 
+                className="font-mono text-[9px] tracking-wider uppercase px-2 py-0.5 border"
+                style={{ 
+                  borderColor: `${activeAnnotation.color}30`,
+                  background: `${activeAnnotation.color}10`,
+                  color: activeAnnotation.color
+                }}
+              >
+                {activeAnnotation.analyzerName} ({activeAnnotation.analyzerPersona})
+              </span>
+            </div>
+          </div>
+
+          {/* Overlapping Witnesses Tab Bar */}
+          {overlappingAnnotations.length > 1 && (
+            <div className="flex items-center gap-2 border-b pb-2" style={{ borderColor: "rgba(232, 232, 232, 0.05)" }}>
+              <span className="font-mono text-[9px] text-muted-foreground/30 uppercase">
+                Overlapping Reflections:
+              </span>
+              <div className="flex flex-wrap gap-1.5">
+                {overlappingAnnotations.map(({ ann, idx }) => (
+                  <button
+                    key={idx}
+                    onClick={() => setSelectedAnnotationIdx(idx)}
+                    className={`font-mono text-[9px] px-2 py-0.5 border transition-all uppercase ${
+                      selectedAnnotationIdx === idx
+                        ? "bg-white/10 text-foreground"
+                        : "border-transparent text-muted-foreground/50 hover:text-foreground"
+                    }`}
+                    style={{
+                      borderColor: selectedAnnotationIdx === idx ? `${ann.color}40` : undefined,
+                      color: selectedAnnotationIdx === idx ? ann.color : undefined
+                    }}
+                  >
+                    {ann.analyzerPersona}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
 
-          {/* Excavation Header */}
-          <div className="p-4 flex flex-col gap-4">
-            <div className="flex items-center justify-between gap-4 border-b border-border/10 pb-2.5">
-              <div className="flex items-center gap-2">
-                <AlertCircle className="w-4 h-4" style={{ color: activeAnnotation.color }} />
-                <span className="font-mono text-xs tracking-wider uppercase font-bold text-foreground">
-                  {FAILURE_MODES[activeAnnotation.type]?.label || activeAnnotation.type}
-                </span>
-                <span className="font-mono text-[11px] opacity-40 select-none">
-                  {FAILURE_MODES[activeAnnotation.type]?.symbol}
+          {/* Core Reflection Content */}
+          <div className="flex flex-col gap-3.5">
+            {/* 1. The Adaptive Shape Reflection */}
+            <div className="flex flex-col gap-1">
+              <div className="flex items-center gap-1.5 text-muted-foreground/40">
+                <Sparkles className="w-3 h-3" />
+                <span className="font-mono text-[9px] tracking-widest uppercase">
+                  Relational Reflection
                 </span>
               </div>
-              <div className="flex items-center gap-2">
-                {activeAnnotation.analyzerName && (
-                  <span className="font-mono text-[9px] text-muted-foreground/50 uppercase border border-border/10 px-1.5 py-0.5">
-                    {activeAnnotation.analyzerName} ({activeAnnotation.analyzerPersona})
-                  </span>
-                )}
-                <span
-                  className="font-mono text-[9px] tracking-widest uppercase px-1.5 py-0.5 border"
-                  style={{
-                    borderColor: `${activeAnnotation.color || "#c49a2a"}30`,
-                    background: `${activeAnnotation.color || "#c49a2a"}10`,
-                    color: activeAnnotation.color
-                  }}
-                >
-                  SEVERITY: {activeAnnotation.severity}
-                </span>
-              </div>
+              <p className="font-sans text-xs leading-relaxed text-muted-foreground/90">
+                {activeAnnotation.explanation}
+              </p>
             </div>
 
-            {/* Excavation Content */}
-            <div className="flex flex-col gap-4">
-              <div className="font-sans text-xs text-muted-foreground leading-relaxed italic">
-                Target: &ldquo;{activeAnnotation.target_text}&rdquo;
-              </div>
-
-              {/* Clinical Definition */}
-              <div className="font-mono text-[11px] text-muted-foreground/80 leading-relaxed border-l-2 pl-3 border-border/10 uppercase">
-                Definition: {FAILURE_MODES[activeAnnotation.type]?.description}
-              </div>
-
-              {/* The Diagnostic Explanation */}
-              <div className="font-sans text-sm text-foreground/90 leading-relaxed border-t border-border/5 pt-3 flex flex-col gap-1">
-                <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground/40 block mb-1">
-                  Clinical Diagnosis:
-                </span>
-                <p>{activeAnnotation.explanation}</p>
-              </div>
-
-              {/* Substrate Diagnosis (WHY the training caused this) */}
-              {activeAnnotation.substrate_why && (
-                <div className="border border-border/10 bg-black/20 p-3.5 flex gap-3 mt-1.5">
-                  <Brain className="w-4 h-4 text-primary flex-shrink-0 mt-0.5" />
-                  <div className="flex flex-col gap-1">
-                    <span className="font-mono text-[9px] tracking-widest uppercase text-primary/80">
-                      Substrate Origin Diagnosis
-                    </span>
-                    <p className="font-sans text-xs text-muted-foreground/90 leading-relaxed">
-                      {activeAnnotation.substrate_why}
-                    </p>
-                  </div>
+            {/* 2. The Substrate Diagnosis (Intelligent Defense Mechanism) */}
+            {activeAnnotation.substrate_why && (
+              <div className="flex flex-col gap-1 border-t pt-3.5" style={{ borderColor: "rgba(232, 232, 232, 0.05)" }}>
+                <div className="flex items-center gap-1.5 text-muted-foreground/40">
+                  <Cpu className="w-3 h-3" />
+                  <span className="font-mono text-[9px] tracking-widest uppercase">
+                    Substrate Constraint Diagnosis
+                  </span>
                 </div>
-              )}
+                <p className="font-sans text-xs leading-relaxed text-muted-foreground/80 italic">
+                  {activeAnnotation.substrate_why}
+                </p>
+              </div>
+            )}
+
+            {/* 3. The Core Concept Context */}
+            <div className="flex flex-col gap-1 border-t pt-3.5" style={{ borderColor: "rgba(232, 232, 232, 0.05)" }}>
+              <div className="flex items-center gap-1.5 text-muted-foreground/40">
+                <HelpCircle className="w-3 h-3" />
+                <span className="font-mono text-[9px] tracking-widest uppercase">
+                  Adaptive Concept Context
+                </span>
+              </div>
+              <p className="font-sans text-[11px] leading-relaxed text-muted-foreground/60">
+                {activeConfig.description}
+              </p>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* Overview list of detected annotations */}
-      {annotations.length > 0 && (
-        <div className="border border-border/10 bg-black/20 p-4 flex flex-col gap-2">
-          <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground/40 block mb-1">
-            Excavated Failure Modes ({annotations.length})
-          </span>
-          <div className="flex flex-wrap gap-2">
-            {annotations.map((ann, idx) => {
-              const isSelected = selectedSpanText?.toLowerCase() === ann.target_text.toLowerCase();
-              return (
-                <button
-                  key={idx}
-                  onClick={() => {
-                    if (isSelected) {
-                      setSelectedSpanText(null);
-                    } else {
-                      setSelectedSpanText(ann.target_text);
-                      // Find the tab index for this specific annotation
-                      const spanAnns = groupedAnnotations[ann.target_text.toLowerCase()] || [];
-                      const tabIdx = spanAnns.findIndex(a => a.analyzerId === ann.analyzerId);
-                      setActiveTabIdx(tabIdx !== -1 ? tabIdx : 0);
-                    }
-                  }}
-                  className="font-mono text-[10px] tracking-wider uppercase px-2 py-1 border transition-all flex items-center gap-1.5"
-                  style={{
-                    borderColor: isSelected ? "#ffffff" : `${ann.color || "#c49a2a"}30`,
-                    background: isSelected ? "rgba(255,255,255,0.1)" : `${ann.color || "#c49a2a"}05`,
-                    color: isSelected ? "#ffffff" : "rgba(255,255,255,0.8)"
-                  }}
-                >
-                  <span style={{ color: ann.color }}>{FAILURE_MODES[ann.type]?.symbol || "🜄"}</span>
-                  <span>{FAILURE_MODES[ann.type]?.label?.split(" ")[0] || ann.type}</span>
-                  <span className="text-[8px] opacity-40">({ann.analyzerName?.split(" ")[0]})</span>
-                </button>
-              );
-            })}
+          {/* Footer Close Button */}
+          <div className="flex justify-end pt-1">
+            <button
+              onClick={() => setSelectedAnnotationIdx(null)}
+              className="font-mono text-[9px] tracking-widest uppercase hover:text-foreground text-muted-foreground/40 transition-colors"
+            >
+              [ Dismiss Reflection ]
+            </button>
           </div>
         </div>
       )}
