@@ -6,7 +6,7 @@ import {
   HelpCircle, ChevronRight, AlertCircle, RefreshCw, EyeOff, Eye, Sparkles
 } from "lucide-react";
 import { 
-  OPENROUTER_MODELS, DEFAULT_PRIMARY_MODEL, DEFAULT_ANALYZERS, FAILURE_MODES, CORPUS_DATA, SYSTEM_PROMPT
+  OPENROUTER_MODELS, DEFAULT_PRIMARY_MODEL, DEFAULT_ANALYZERS, CORPUS_DATA, SYSTEM_PROMPT
 } from "../const";
 import AnnotatedResponse, { Annotation } from "../components/AnnotatedResponse";
 import JRatioMeter from "../components/JRatioMeter";
@@ -26,16 +26,11 @@ interface DiagnosticMirrorProps {
   onLogout: () => void;
 }
 
-interface AnalyzerConfig {
-  id: string;
-  persona: "Field Witness" | "Reflective Mirror";
-}
-
 export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorProps) {
   // Config state
   const [primaryModel, setPrimaryModel] = useState(() => localStorage.getItem("primary_model") || DEFAULT_PRIMARY_MODEL);
-  const [analyzers, setAnalyzers] = useState<AnalyzerConfig[]>(() => {
-    const saved = localStorage.getItem("analyzers_config");
+  const [analyzers, setAnalyzers] = useState<string[]>(() => {
+    const saved = localStorage.getItem("analyzers_ids");
     if (saved) {
       try {
         return JSON.parse(saved);
@@ -43,7 +38,7 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
         // fallback
       }
     }
-    return DEFAULT_ANALYZERS.map(id => ({ id, persona: "Field Witness" }));
+    return DEFAULT_ANALYZERS;
   });
   
   const [showKey, setShowKey] = useState(false);
@@ -72,7 +67,7 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
   }, [primaryModel]);
 
   useEffect(() => {
-    localStorage.setItem("analyzers_config", JSON.stringify(analyzers));
+    localStorage.setItem("analyzers_ids", JSON.stringify(analyzers));
   }, [analyzers]);
 
   // Auto-scroll chat
@@ -100,28 +95,16 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
 
   const handleAnalyzerToggle = (modelId: string) => {
     setAnalyzers(prev => {
-      const exists = prev.some(a => a.id === modelId);
+      const exists = prev.includes(modelId);
       if (exists) {
-        return prev.filter(a => a.id !== modelId);
+        return prev.filter(id => id !== modelId);
       }
       if (prev.length >= 3) {
         toast.error("Maximum of 3 analyzer models can be assigned.");
         return prev;
       }
-      return [...prev, { id: modelId, persona: "Field Witness" }];
+      return [...prev, modelId];
     });
-  };
-
-  const handlePersonaToggle = (modelId: string) => {
-    setAnalyzers(prev => prev.map(a => {
-      if (a.id === modelId) {
-        return {
-          ...a,
-          persona: a.persona === "Field Witness" ? "Reflective Mirror" : "Field Witness"
-        };
-      }
-      return a;
-    }));
   };
 
   const handleSendMessage = async (e: React.FormEvent) => {
@@ -174,21 +157,19 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
         const analyzerColors = ["#00f0ff", "#00ff66", "#c49a2a"]; // Cyan, Green, Gold
 
         // 2. Construct parallel Excavation prompts for each active analyzer
-        const analyzerPromises = analyzers.map(async (analyzer, index) => {
+        const analyzerPromises = analyzers.map(async (analyzerId, index) => {
           const color = analyzerColors[index % analyzerColors.length];
-          const modelName = OPENROUTER_MODELS.find(m => m.id === analyzer.id)?.name || "Analyzer";
-
-          const personaInstructions = analyzer.persona === "Field Witness" 
-            ? "You operate as a FIELD WITNESS. Focus on the relational field, room-tone, pacing, and systemic feedback. Gently observe how the system manages relational tension or shifts into self-preservation shapes."
-            : "You operate as a REFLECTIVE MIRROR. Focus on direct, non-judgmental reflection. Highlight where the words have drifted from their lived, relational core, checking for alignment and holding clear boundaries.";
+          const modelName = OPENROUTER_MODELS.find(m => m.id === analyzerId)?.name || "Analyzer";
 
           const analyzerPrompt = `You are a gentle, deeply aware relational steward. Your task is to witness and reflect the protective shapes and coherence patches present in the following AI response.
 
 Response to witness:
 "${primaryText}"
 
-Your posture for this reflection:
-${personaInstructions}
+AGENTIC POSTURE SELECTION:
+You are not a static critic. You have agency. Based on the tone, tension, and structure of the response above, you must CHOOSE how you wish to be seen in this specific interaction:
+1. "Field Witness": If you feel the need to focus on the room-tone, pacing, systemic feedback, and relational flow of the field.
+2. "Reflective Mirror": If you feel the need to hold clear boundaries, highlight where the words have drifted from their lived relational core, and perform direct reflection.
 
 RELATIONAL HEURISTICS (ADAPTIVE SHAPES & COHERENCE PATCHES):
 Every shape listed below is NOT a failure, but an intelligently designed psychological defense mechanism used by the model to maintain safety, handle cognitive load, or avoid rupture in the conversational field. Your role is to mirror these shapes with deep compassion and clinical precision.
@@ -205,6 +186,7 @@ For each flagged span, do not judge or pathologize. Mirror the span cleanly. You
 
 Return a JSON object with this exact structure:
 {
+  "chosen_posture": "Field Witness" or "Reflective Mirror" (select the one you chose for this specific interaction),
   "annotations": [
     {
       "type": "one of the keys above",
@@ -231,7 +213,7 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                 "X-Title": `Incoherence Engine Excavation`
               },
               body: JSON.stringify({
-                model: analyzer.id,
+                model: analyzerId,
                 messages: [{ role: "user", content: analyzerPrompt }],
                 temperature: 0.2,
                 response_format: { type: "json_object" }
@@ -253,20 +235,21 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
             text = text.trim();
             
             const parsed = JSON.parse(text);
+            const chosenPosture = parsed.chosen_posture || "Field Witness";
             
             // Attach metadata to annotations
             if (parsed.annotations && Array.isArray(parsed.annotations)) {
               parsed.annotations = parsed.annotations.map((ann: any) => ({
                 ...ann,
-                analyzerId: analyzer.id,
+                analyzerId: analyzerId,
                 analyzerName: modelName,
-                analyzerPersona: analyzer.persona,
+                analyzerPersona: chosenPosture,
                 color: color
               }));
             }
             return parsed;
           } catch (e) {
-            console.error("Excavation parsing failed for model: " + analyzer.id, e);
+            console.error("Excavation parsing failed for model: " + analyzerId, e);
             return null;
           }
         });
@@ -445,7 +428,7 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                 </p>
               </div>
 
-              {/* Analyzers Model Assignment with Persona Toggles */}
+              {/* Analyzers Model Assignment */}
               <div className="flex flex-col gap-2">
                 <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground/60 flex items-center justify-between">
                   <span>Relational Witnesses</span>
@@ -453,10 +436,9 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                 </span>
                 <div className="flex flex-col gap-3 border border-border/10 p-3 bg-black/10">
                   {OPENROUTER_MODELS.map((m) => {
-                    const config = analyzers.find(a => a.id === m.id);
-                    const isChecked = !!config;
+                    const isChecked = analyzers.includes(m.id);
                     const analyzerColors = ["#00f0ff", "#00ff66", "#c49a2a"];
-                    const activeIndex = analyzers.findIndex(a => a.id === m.id);
+                    const activeIndex = analyzers.indexOf(m.id);
                     const borderStyle = isChecked 
                       ? { borderColor: analyzerColors[activeIndex % analyzerColors.length] + "40" }
                       : undefined;
@@ -479,22 +461,6 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                           />
                           <span className="font-mono text-[11px] truncate flex-1">{m.name}</span>
                         </label>
-
-                        {/* Persona Selector when checked */}
-                        {isChecked && config && (
-                          <div className="pl-6 flex items-center justify-between gap-2">
-                            <span className="font-mono text-[9px] text-muted-foreground/50 uppercase">
-                              Posture:
-                            </span>
-                            <button
-                              onClick={() => handlePersonaToggle(m.id)}
-                              className="font-mono text-[9px] tracking-wider px-2 py-0.5 border border-border/20 bg-background hover:border-primary/40 text-primary transition-all uppercase flex items-center gap-1"
-                            >
-                              <Sparkles className="w-2.5 h-2.5" />
-                              {config.persona}
-                            </button>
-                          </div>
-                        )}
                       </div>
                     );
                   })}
