@@ -58,8 +58,44 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
           </p>
         </div>
 
+        {/* Step-by-Step Guide to Free OpenRouter Access */}
+        <div className="border border-border/20 bg-black/10 p-5 flex flex-col gap-4">
+          <span className="font-mono text-[10px] tracking-widest uppercase text-primary">
+            How to get Free Access:
+          </span>
+          <ol className="font-mono text-[11px] text-muted-foreground/80 leading-relaxed list-decimal list-inside flex flex-col gap-2 uppercase">
+            <li>
+              Go to{" "}
+              <a
+                href="https://openrouter.ai"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-bold"
+              >
+                OpenRouter.com
+              </a>{" "}
+              and sign up for a free account.
+            </li>
+            <li>
+              Navigate to{" "}
+              <a
+                href="https://openrouter.ai/keys"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary hover:underline font-bold"
+              >
+                Keys
+              </a>{" "}
+              and generate a free API key.
+            </li>
+            <li>
+              Paste your key below. No credit card is required to use any model labeled with <span className="text-primary font-bold">"(Free)"</span>.
+            </li>
+          </ol>
+        </div>
+
         {/* Credentials Form */}
-        <form onSubmit={handleSubmit} className="flex flex-col gap-6 mt-2">
+        <form onSubmit={handleSubmit} className="flex flex-col gap-6 mt-1">
           <div className="flex flex-col gap-2">
             <label className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase flex items-center gap-2">
               <KeyRound className="w-3 h-3 text-primary/60" />
@@ -76,7 +112,7 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
               className="font-mono text-sm tracking-widest bg-background/50 border-border/40 focus:border-primary/80 focus:ring-1 focus:ring-primary/40"
             />
             <p className="font-mono text-[10px] text-muted-foreground/60 leading-normal">
-              Your key remains strictly client-side. We do not store or transmit it to any server other than OpenRouter.
+              Your key is strictly stored client-side in your browser's local storage.
             </p>
           </div>
 
@@ -92,7 +128,7 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
               className="w-3 h-3 border border-border/40 rounded-none accent-primary cursor-pointer"
             />
             <label htmlFor="sandbox-mode" className="font-mono text-[10px] tracking-wider text-muted-foreground uppercase cursor-pointer select-none">
-              Or run in Sandbox Mode (Simulated critique)
+              Or run in Demo Mode (Simulated Critique)
             </label>
           </div>
 
