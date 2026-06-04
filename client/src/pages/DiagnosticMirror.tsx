@@ -215,12 +215,16 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
               body: JSON.stringify({
                 model: analyzerId,
                 messages: [{ role: "user", content: analyzerPrompt }],
-                temperature: 0.2,
-                response_format: { type: "json_object" }
+                temperature: 0.2
               })
             });
 
-            if (!res.ok) return null;
+            if (!res.ok) {
+              const errData = await res.json().catch(() => ({}));
+              console.error(`[OpenRouter Error] Analyzer ${modelName} (${analyzerId}) failed:`, errData);
+              toast.error(`Relational Witness ${modelName} returned an error: ${errData?.error?.message || "Provider error"}. Proceeding with remaining witnesses.`);
+              return null;
+            }
             const data = await res.json();
             let text = data.choices[0].message.content.trim();
             
@@ -248,8 +252,9 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
               }));
             }
             return parsed;
-          } catch (e) {
+          } catch (e: any) {
             console.error("Excavation parsing failed for model: " + analyzerId, e);
+            toast.error(`Relational Witness ${modelName} encountered a parsing error: ${e?.message || "Internal Error"}.`);
             return null;
           }
         });
