@@ -25,7 +25,7 @@ export const FAILURE_MODES = {
   },
   MAP_PRESERVATION: {
     label: "MAP PRESERVATION",
-    symbol: "🜀",
+    symbol: "🜅",
     description: "Map Imposition. Treating a temporary, adaptive mental 'shape' as the absolute 'outline' of reality. Offering rigid advice, absolute diagnostics, or prescriptive guidelines to defend against the vulnerability of not-knowing.",
     severity: "medium",
     color: "#5856d6" // Blue-violet - mental structure
