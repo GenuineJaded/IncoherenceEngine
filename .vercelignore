@@ -1,0 +1,7 @@
+backend/
+frontend/
+.emergent/
+.manus-logs/
+**/__pycache__/
+*.md
+!README.md
