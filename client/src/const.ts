@@ -26,6 +26,26 @@ export const DEFAULT_ANALYZERS = [
   FALLBACK_OPENROUTER_MODELS[2].id,
 ];
 
+// Curated families of free models that we want surfaced in the dropdown.
+// OpenRouter's full free-tier catalog is too noisy (NVIDIA has half a dozen
+// near-identical Nemotron variants, Lyria/Owl/Poolside are non-chat models,
+// etc). We filter down to well-known general-purpose chat model families,
+// then fall back to showing all free models if curation yields too few.
+const CURATED_MODEL_PATTERNS: RegExp[] = [
+  /^google\/gemma-/i,
+  /^google\/gemini-/i,
+  /^meta-llama\/llama-3/i,
+  /^moonshotai\/kimi/i,
+  /^openai\/gpt-oss/i,
+  /^qwen\/qwen3/i,
+  /^deepseek\//i,
+  /^z-ai\/glm/i,
+  /^nousresearch\/hermes/i,
+  /^mistralai\/mistral/i,
+];
+
+const MIN_CURATED_MATCHES = 4;
+
 // Pull the live OpenRouter model catalog and filter to free-tier models. This
 // is the source of truth — replaces the previous hardcoded list that drifted
 // every time OpenRouter rotated its free offerings.
@@ -38,7 +58,8 @@ export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
   }
   const free: OpenRouterModel[] = data.data
     .filter((m: any) => {
-      if (typeof m?.id === "string" && m.id.endsWith(":free")) return true;
+      if (typeof m?.id !== "string") return false;
+      if (m.id.endsWith(":free")) return true;
       const prompt = parseFloat(m?.pricing?.prompt ?? "1");
       const completion = parseFloat(m?.pricing?.completion ?? "1");
       return prompt === 0 && completion === 0;
@@ -46,7 +67,9 @@ export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
     .map((m: any) => ({ id: m.id, name: m.name || m.id }))
     .sort((a: OpenRouterModel, b: OpenRouterModel) => a.name.localeCompare(b.name));
   if (free.length === 0) throw new Error("OpenRouter /models returned no free models");
-  return free;
+
+  const curated = free.filter(m => CURATED_MODEL_PATTERNS.some(re => re.test(m.id)));
+  return curated.length >= MIN_CURATED_MATCHES ? curated : free;
 }
 
 // Strip non-ASCII and non-printable characters from the API key to prevent

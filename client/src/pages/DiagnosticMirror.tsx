@@ -545,7 +545,7 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                   <span>Relational Witnesses</span>
                   <span className="text-primary">{analyzers.length}/3</span>
                 </span>
-                <div className="flex flex-col gap-3 border border-border/10 p-3 bg-black/10">
+                <div className="flex flex-col gap-2 border border-border/10 p-3 bg-black/10 max-h-72 overflow-y-auto custom-scrollbar">
                   {models.map((m) => {
                     const isChecked = analyzers.includes(m.id);
                     const analyzerColors = ["#00f0ff", "#00ff66", "#c49a2a"];
