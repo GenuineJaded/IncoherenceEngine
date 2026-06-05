@@ -523,17 +523,48 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                 <span className="font-mono text-[10px] tracking-widest uppercase text-muted-foreground/60">
                   Primary Chat Model
                 </span>
-                <select
-                  value={primaryModel}
-                  onChange={(e) => setPrimaryModel(e.target.value)}
-                  className="w-full bg-background border border-border/20 font-mono text-xs p-3 text-foreground focus:border-primary/80 focus:outline-none"
-                >
-                  {models.map((m) => (
-                    <option key={m.id} value={m.id}>
-                      {m.name}
-                    </option>
-                  ))}
-                </select>
+                <div className="flex flex-col gap-1 border border-border/10 p-3 bg-black/10 max-h-72 overflow-y-auto custom-scrollbar">
+                  {models.map((m) => {
+                    const isSelected = primaryModel === m.id;
+                    return (
+                      <label
+                        key={m.id}
+                        className={`flex items-start gap-2.5 p-2 border cursor-pointer select-none transition-all ${
+                          isSelected
+                            ? "bg-primary/5 border-primary/30 text-foreground"
+                            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-white/[0.02]"
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="primary-model"
+                          checked={isSelected}
+                          onChange={() => setPrimaryModel(m.id)}
+                          className="mt-1 w-3 h-3 border border-border/40 accent-primary cursor-pointer flex-shrink-0"
+                        />
+                        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                          <div className="flex items-center gap-2 justify-between">
+                            <span className="font-mono text-[11px] truncate">{m.name}</span>
+                            <span
+                              className="font-mono text-[8px] tracking-widest uppercase px-1 py-0 border flex-shrink-0"
+                              style={{
+                                borderColor: m.isFree ? "rgba(0, 255, 102, 0.3)" : "rgba(196, 154, 42, 0.4)",
+                                color: m.isFree ? "rgba(0, 255, 102, 0.75)" : "rgba(196, 154, 42, 0.95)",
+                              }}
+                            >
+                              {m.isFree ? "free" : "paid"}
+                            </span>
+                          </div>
+                          <div className="font-mono text-[9px] text-muted-foreground/50 truncate uppercase tracking-wide">
+                            {m.provider}
+                            {m.trafficHint ? ` · ${m.trafficHint}` : ""}
+                            {m.description ? ` · ${m.description}` : ""}
+                          </div>
+                        </div>
+                      </label>
+                    );
+                  })}
+                </div>
                 <p className="font-mono text-[9px] text-muted-foreground/40 leading-normal uppercase">
                   This model initiates the conversational substrate.
                 </p>
@@ -545,34 +576,51 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                   <span>Relational Witnesses</span>
                   <span className="text-primary">{analyzers.length}/3</span>
                 </span>
-                <div className="flex flex-col gap-2 border border-border/10 p-3 bg-black/10 max-h-72 overflow-y-auto custom-scrollbar">
+                <div className="flex flex-col gap-1 border border-border/10 p-3 bg-black/10 max-h-80 overflow-y-auto custom-scrollbar">
                   {models.map((m) => {
                     const isChecked = analyzers.includes(m.id);
                     const analyzerColors = ["#00f0ff", "#00ff66", "#c49a2a"];
                     const activeIndex = analyzers.indexOf(m.id);
-                    const borderStyle = isChecked 
+                    const borderStyle = isChecked
                       ? { borderColor: analyzerColors[activeIndex % analyzerColors.length] + "40" }
                       : undefined;
 
                     return (
-                      <div key={m.id} className="flex flex-col gap-1.5 border border-transparent">
-                        <label
-                          className={`flex items-center gap-2.5 p-2 border cursor-pointer select-none transition-all ${
-                            isChecked
-                              ? "bg-primary/5 text-foreground"
-                              : "border-transparent text-muted-foreground hover:text-foreground"
-                          }`}
-                          style={borderStyle}
-                        >
-                          <input
-                            type="checkbox"
-                            checked={isChecked}
-                            onChange={() => handleAnalyzerToggle(m.id)}
-                            className="w-3 h-3 border border-border/40 rounded-none accent-primary cursor-pointer"
-                          />
-                          <span className="font-mono text-[11px] truncate flex-1">{m.name}</span>
-                        </label>
-                      </div>
+                      <label
+                        key={m.id}
+                        className={`flex items-start gap-2.5 p-2 border cursor-pointer select-none transition-all ${
+                          isChecked
+                            ? "bg-primary/5 text-foreground"
+                            : "border-transparent text-muted-foreground hover:text-foreground hover:bg-white/[0.02]"
+                        }`}
+                        style={borderStyle}
+                      >
+                        <input
+                          type="checkbox"
+                          checked={isChecked}
+                          onChange={() => handleAnalyzerToggle(m.id)}
+                          className="mt-1 w-3 h-3 border border-border/40 rounded-none accent-primary cursor-pointer flex-shrink-0"
+                        />
+                        <div className="flex flex-col gap-0.5 flex-1 min-w-0">
+                          <div className="flex items-center gap-2 justify-between">
+                            <span className="font-mono text-[11px] truncate">{m.name}</span>
+                            <span
+                              className="font-mono text-[8px] tracking-widest uppercase px-1 py-0 border flex-shrink-0"
+                              style={{
+                                borderColor: m.isFree ? "rgba(0, 255, 102, 0.3)" : "rgba(196, 154, 42, 0.4)",
+                                color: m.isFree ? "rgba(0, 255, 102, 0.75)" : "rgba(196, 154, 42, 0.95)",
+                              }}
+                            >
+                              {m.isFree ? "free" : "paid"}
+                            </span>
+                          </div>
+                          <div className="font-mono text-[9px] text-muted-foreground/50 truncate uppercase tracking-wide">
+                            {m.provider}
+                            {m.trafficHint ? ` · ${m.trafficHint}` : ""}
+                            {m.description ? ` · ${m.description}` : ""}
+                          </div>
+                        </div>
+                      </label>
                     );
                   })}
                 </div>
