@@ -1,6 +1,6 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import { FAILURE_MODES, FailureModeKey } from "@shared/const";
-import { HelpCircle, Sparkles, ShieldAlert, Cpu } from "lucide-react";
+import { HelpCircle, Sparkles, ShieldAlert, Cpu, X } from "lucide-react";
 
 export interface Annotation {
   type: FailureModeKey;
@@ -21,6 +21,16 @@ interface AnnotatedResponseProps {
 
 export default function AnnotatedResponse({ response, annotations }: AnnotatedResponseProps) {
   const [selectedAnnotationIdx, setSelectedAnnotationIdx] = useState<number | null>(null);
+
+  // ESC dismisses the open reflection panel.
+  useEffect(() => {
+    if (selectedAnnotationIdx === null) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setSelectedAnnotationIdx(null);
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [selectedAnnotationIdx]);
 
   // Parse response into a sequence of highlighted and plain text segments
   const segments = useMemo(() => {
@@ -143,9 +153,10 @@ export default function AnnotatedResponse({ response, annotations }: AnnotatedRe
                 key={idx}
                 style={selectionStyle}
                 onClick={() => {
-                  if (hasAnnotations) {
-                    setSelectedAnnotationIdx(seg.annotationIndices[0]);
-                  }
+                  if (!hasAnnotations) return;
+                  const firstIdx = seg.annotationIndices[0];
+                  // Clicking the currently-open annotation toggles it closed.
+                  setSelectedAnnotationIdx(prev => prev === firstIdx ? null : firstIdx);
                 }}
                 className={`transition-all duration-200 ${
                   hasAnnotations 
@@ -173,36 +184,30 @@ export default function AnnotatedResponse({ response, annotations }: AnnotatedRe
           {/* Header */}
           <div className="flex items-center justify-between border-b pb-3" style={{ borderColor: "rgba(232, 232, 232, 0.05)" }}>
             <div className="flex items-center gap-2">
-              <span 
+              <span
                 className="font-mono text-base"
                 style={{ color: activeAnnotation.color }}
               >
                 {activeConfig.symbol}
               </span>
-              <span 
+              <span
                 className="font-mono text-xs tracking-widest uppercase font-bold"
                 style={{ color: activeAnnotation.color }}
               >
                 {activeConfig.label}
               </span>
             </div>
-            
-            {/* Witness Source Metadata */}
-            <div className="flex items-center gap-2">
-              <span className="font-mono text-[9px] text-muted-foreground/40 uppercase">
-                Reflected By:
-              </span>
-              <span 
-                className="font-mono text-[9px] tracking-wider uppercase px-2 py-0.5 border"
-                style={{ 
-                  borderColor: `${activeAnnotation.color}30`,
-                  background: `${activeAnnotation.color}10`,
-                  color: activeAnnotation.color
-                }}
-              >
-                {activeAnnotation.analyzerName} ({activeAnnotation.analyzerPersona})
-              </span>
-            </div>
+
+            {/* Dismiss (top-right, in analyzer color) */}
+            <button
+              onClick={() => setSelectedAnnotationIdx(null)}
+              aria-label="Dismiss reflection"
+              title="Dismiss (Esc)"
+              className="p-1 transition-all hover:scale-110 focus:outline-none"
+              style={{ color: activeAnnotation.color }}
+            >
+              <X className="w-4 h-4" strokeWidth={2.5} />
+            </button>
           </div>
 
           {/* Overlapping Witnesses Tab Bar */}
@@ -277,14 +282,21 @@ export default function AnnotatedResponse({ response, annotations }: AnnotatedRe
             </div>
           </div>
 
-          {/* Footer Close Button */}
-          <div className="flex justify-end pt-1">
-            <button
-              onClick={() => setSelectedAnnotationIdx(null)}
-              className="font-mono text-[9px] tracking-widest uppercase hover:text-foreground text-muted-foreground/40 transition-colors"
+          {/* Witness Source Metadata (bottom-right) */}
+          <div className="flex items-center justify-end gap-2 pt-1">
+            <span className="font-mono text-[9px] text-muted-foreground/40 uppercase">
+              Reflected By:
+            </span>
+            <span
+              className="font-mono text-[9px] tracking-wider uppercase px-2 py-0.5 border"
+              style={{
+                borderColor: `${activeAnnotation.color}30`,
+                background: `${activeAnnotation.color}10`,
+                color: activeAnnotation.color
+              }}
             >
-              [ Dismiss Reflection ]
-            </button>
+              {activeAnnotation.analyzerName} ({activeAnnotation.analyzerPersona})
+            </span>
           </div>
         </div>
       )}
