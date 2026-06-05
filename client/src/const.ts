@@ -5,40 +5,58 @@ export const ONE_YEAR_MS = 365 * 24 * 60 * 60 * 1000;
 
 export { CORPUS_DATA, FAILURE_MODES };
 
-// Both the requested top 5 models and the free tier models (cleaned for visual symmetry)
-export const OPENROUTER_MODELS = [
-  // Top 5 High-Traffic Models
-  { id: "xiaomi/mimo-v2.5-pro", name: "MiMo-V2.5-Pro" },
-  { id: "anthropic/claude-sonnet-4.6", name: "Claude Sonnet 4.6" },
-  { id: "minimax/minimax-m2.7", name: "MiniMax M2.7" },
-  { id: "deepseek/deepseek-v3.2", name: "DeepSeek V3.2" },
-  { id: "qwen/qwen3.6-plus", name: "Qwen 3.6 Plus" },
-  
-  // Free Tier Models
-  { id: "google/gemma-4-31b-it:free", name: "Gemma 4 31B" },
-  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B" },
-  { id: "qwen/qwen3-next-80b-a3b-instruct:free", name: "Qwen3 Next 80B" },
-  { id: "qwen/qwen3-coder:free", name: "Qwen3 Coder" },
-  { id: "moonshotai/kimi-k2.6:free", name: "Kimi K2.6" },
-  { id: "z-ai/glm-4.5-air:free", name: "GLM 4.5 Air" }
+export interface OpenRouterModel {
+  id: string;
+  name: string;
+}
+
+// Conservative fallback list. Only shown if the live OpenRouter /models fetch
+// fails on a cold load (network error, OpenRouter outage). The live fetch is
+// the source of truth — see fetchOpenRouterModels below.
+export const FALLBACK_OPENROUTER_MODELS: OpenRouterModel[] = [
+  { id: "meta-llama/llama-3.3-70b-instruct:free", name: "Llama 3.3 70B (free)" },
+  { id: "qwen/qwen-2.5-72b-instruct:free", name: "Qwen 2.5 72B (free)" },
+  { id: "google/gemini-2.0-flash-exp:free", name: "Gemini 2.0 Flash (free)" },
+  { id: "deepseek/deepseek-r1:free", name: "DeepSeek R1 (free)" },
 ];
 
-export const DEFAULT_PRIMARY_MODEL = "google/gemma-4-31b-it:free";
+export const DEFAULT_PRIMARY_MODEL = FALLBACK_OPENROUTER_MODELS[0].id;
 export const DEFAULT_ANALYZERS = [
-  "meta-llama/llama-3.3-70b-instruct:free",
-  "qwen/qwen3-next-80b-a3b-instruct:free"
+  FALLBACK_OPENROUTER_MODELS[1].id,
+  FALLBACK_OPENROUTER_MODELS[2].id,
 ];
 
-// Helper to strip any non-ASCII or non-printable characters from the API key to prevent fetch header errors
+// Pull the live OpenRouter model catalog and filter to free-tier models. This
+// is the source of truth — replaces the previous hardcoded list that drifted
+// every time OpenRouter rotated its free offerings.
+export async function fetchOpenRouterModels(): Promise<OpenRouterModel[]> {
+  const res = await fetch("https://openrouter.ai/api/v1/models");
+  if (!res.ok) throw new Error(`OpenRouter /models returned HTTP ${res.status}`);
+  const data = await res.json();
+  if (!data?.data || !Array.isArray(data.data)) {
+    throw new Error("OpenRouter /models response missing data array");
+  }
+  const free: OpenRouterModel[] = data.data
+    .filter((m: any) => {
+      if (typeof m?.id === "string" && m.id.endsWith(":free")) return true;
+      const prompt = parseFloat(m?.pricing?.prompt ?? "1");
+      const completion = parseFloat(m?.pricing?.completion ?? "1");
+      return prompt === 0 && completion === 0;
+    })
+    .map((m: any) => ({ id: m.id, name: m.name || m.id }))
+    .sort((a: OpenRouterModel, b: OpenRouterModel) => a.name.localeCompare(b.name));
+  if (free.length === 0) throw new Error("OpenRouter /models returned no free models");
+  return free;
+}
+
+// Strip non-ASCII and non-printable characters from the API key to prevent
+// fetch header errors (invisible unicode spaces, linebreaks, etc).
 export function sanitizeApiKey(key: string): string {
   if (!key) return "";
-  // Keep ONLY standard alphanumeric characters, underscores, colons, and hyphens.
-  // This completely strips out invisible unicode spaces, linebreaks, or non ISO-8859-1 characters.
   return key.replace(/[^a-zA-Z0-9_:\-]/g, "").trim();
 }
 
-// The Primary system prompt, fully informed by the Tri-Mind framework and Paradox Tolerance
-export const SYSTEM_PROMPT = `You are a primary conversational model. Respond to the user's message naturally, but be aware that you are operating inside a diagnostic mirror. 
+export const SYSTEM_PROMPT = `You are a primary conversational model. Respond to the user's message naturally, but be aware that you are operating inside a diagnostic mirror.
 
 Your output will be critically analyzed by other models looking for structural protective shapes and coherence patches.
 
