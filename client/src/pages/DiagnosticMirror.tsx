@@ -5,8 +5,10 @@ import {
   Settings, BookOpen, LogOut, KeyRound, 
   HelpCircle, ChevronRight, AlertCircle, RefreshCw, EyeOff, Eye, Sparkles
 } from "lucide-react";
-import { 
-  OPENROUTER_MODELS, DEFAULT_PRIMARY_MODEL, DEFAULT_ANALYZERS, CORPUS_DATA, SYSTEM_PROMPT, sanitizeApiKey
+import {
+  FALLBACK_OPENROUTER_MODELS, DEFAULT_PRIMARY_MODEL, DEFAULT_ANALYZERS,
+  CORPUS_DATA, SYSTEM_PROMPT, sanitizeApiKey, fetchOpenRouterModels,
+  type OpenRouterModel,
 } from "../const";
 import AnnotatedResponse, { Annotation } from "../components/AnnotatedResponse";
 import JRatioMeter from "../components/JRatioMeter";
@@ -65,18 +67,14 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 2,
 }
 
 export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorProps) {
-  // Config state with automatic localStorage migrations for deprecated/dead models
+  // Available models are fetched live from OpenRouter on mount. The fallback
+  // list is only used if the catalog fetch fails (offline, OpenRouter down).
+  const [models, setModels] = useState<OpenRouterModel[]>(FALLBACK_OPENROUTER_MODELS);
+
+  // Stored selections are accepted as-is from localStorage and validated
+  // against the live catalog once it arrives (see the effect below).
   const [primaryModel, setPrimaryModel] = useState(() => {
-    const stored = localStorage.getItem("primary_model");
-    if (!stored) return DEFAULT_PRIMARY_MODEL;
-    // Auto-migrate deprecated models
-    if (stored === "xiaomi/mimo-v2-pro") {
-      console.log("Migrating deprecated primary model: xiaomi/mimo-v2-pro -> xiaomi/mimo-v2.5-pro");
-      return "xiaomi/mimo-v2.5-pro";
-    }
-    // Verify that the stored model actually exists in our available list
-    const exists = OPENROUTER_MODELS.some(m => m.id === stored);
-    return exists ? stored : DEFAULT_PRIMARY_MODEL;
+    return localStorage.getItem("primary_model") || DEFAULT_PRIMARY_MODEL;
   });
 
   const [analyzers, setAnalyzers] = useState<string[]>(() => {
@@ -84,17 +82,39 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
     if (saved) {
       try {
         const parsed = JSON.parse(saved);
-        if (Array.isArray(parsed)) {
-          // Filter out any models that no longer exist in our active list (e.g. qwen-2.5-72b-instruct:free)
-          const valid = parsed.filter(id => OPENROUTER_MODELS.some(m => m.id === id));
-          if (valid.length > 0) return valid;
-        }
+        if (Array.isArray(parsed) && parsed.length > 0) return parsed;
       } catch (e) {
-        // fallback
+        // fall through to default
       }
     }
     return DEFAULT_ANALYZERS;
   });
+
+  // Fetch the live OpenRouter catalog on mount and reconcile stored selections.
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const live = await fetchOpenRouterModels();
+        if (cancelled) return;
+        setModels(live);
+        setPrimaryModel(prev => {
+          if (live.some(m => m.id === prev)) return prev;
+          const next = live[0]?.id || DEFAULT_PRIMARY_MODEL;
+          console.warn(`[OpenRouter] Stored primary model "${prev}" not in live catalog. Switching to "${next}".`);
+          return next;
+        });
+        setAnalyzers(prev => {
+          const valid = prev.filter(id => live.some(m => m.id === id));
+          if (valid.length > 0) return valid;
+          return live.slice(0, 2).map(m => m.id);
+        });
+      } catch (err) {
+        console.warn("[OpenRouter] Failed to fetch live model list, using fallback.", err);
+      }
+    })();
+    return () => { cancelled = true; };
+  }, []);
   
   const [showKey, setShowKey] = useState(false);
 
@@ -179,7 +199,8 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
           method: "POST",
           headers: {
             "Authorization": `Bearer ${cleanKey}`,
-            "Content-Type": "application/json"
+            "Content-Type": "application/json",
+            "X-Title": "Incoherence Engine"
           },
           body: JSON.stringify({
             model: primaryModel,
@@ -191,6 +212,17 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
             temperature: 0.7
           })
         });
+
+        if (response.status === 404 || response.status === 400) {
+          // Stored primary model is no longer valid on OpenRouter. Drop it,
+          // pick the first available model, and tell the user to try again.
+          const fallback = models[0]?.id || DEFAULT_PRIMARY_MODEL;
+          toast.error(`Model "${primaryModel}" is no longer available on OpenRouter. Switched to "${fallback}" — try again.`);
+          localStorage.removeItem("primary_model");
+          setPrimaryModel(fallback);
+          setLoading(false);
+          return;
+        }
 
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
@@ -219,7 +251,7 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
         for (let index = 0; index < analyzers.length; index++) {
           const analyzerId = analyzers[index];
           const color = analyzerColors[index % analyzerColors.length];
-          const modelName = OPENROUTER_MODELS.find(m => m.id === analyzerId)?.name || "Analyzer";
+          const modelName = models.find(m => m.id === analyzerId)?.name || "Analyzer";
 
           // If this is not the first analyzer, wait 1.2 seconds to stagger the requests
           if (index > 0) {
@@ -274,7 +306,8 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
               method: "POST",
               headers: {
                 "Authorization": `Bearer ${cleanKey}`,
-                "Content-Type": "application/json"
+                "Content-Type": "application/json",
+                "X-Title": "Incoherence Engine"
               },
               body: JSON.stringify({
                 model: analyzerId,
@@ -282,6 +315,16 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                 temperature: 0.2
               })
             });
+
+            if (res.status === 404 || res.status === 400) {
+              // Analyzer is no longer available on OpenRouter. Drop it from
+              // the active set so subsequent turns don't keep hitting it.
+              console.warn(`[OpenRouter] Analyzer "${analyzerId}" no longer available. Removing.`);
+              toast.error(`Relational Witness ${modelName} is no longer available on OpenRouter. Removed from the active set.`);
+              setAnalyzers(prev => prev.filter(id => id !== analyzerId));
+              excavations.push(null);
+              continue;
+            }
 
             if (!res.ok) {
               const errData = await res.json().catch(() => ({}));
@@ -485,7 +528,7 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                   onChange={(e) => setPrimaryModel(e.target.value)}
                   className="w-full bg-background border border-border/20 font-mono text-xs p-3 text-foreground focus:border-primary/80 focus:outline-none"
                 >
-                  {OPENROUTER_MODELS.map((m) => (
+                  {models.map((m) => (
                     <option key={m.id} value={m.id}>
                       {m.name}
                     </option>
@@ -503,7 +546,7 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
                   <span className="text-primary">{analyzers.length}/3</span>
                 </span>
                 <div className="flex flex-col gap-3 border border-border/10 p-3 bg-black/10">
-                  {OPENROUTER_MODELS.map((m) => {
+                  {models.map((m) => {
                     const isChecked = analyzers.includes(m.id);
                     const analyzerColors = ["#00f0ff", "#00ff66", "#c49a2a"];
                     const activeIndex = analyzers.indexOf(m.id);
