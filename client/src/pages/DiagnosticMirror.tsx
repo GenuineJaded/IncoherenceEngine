@@ -29,33 +29,46 @@ interface DiagnosticMirrorProps {
   onLogout: () => void;
 }
 
-// Helper function to execute fetch requests with automatic retries on rate limits (HTTP 429)
-async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 2, initialDelay = 1000): Promise<Response> {
+// Helper function to execute fetch requests with automatic retries on
+// rate limits (HTTP 429), transient upstream provider errors (HTTP 5xx),
+// and network errors. OpenRouter's "Provider returned error" surfaces as
+// a 5xx — without retry, a single flaky upstream call kills a witness for
+// the whole turn even though it would succeed on retry.
+async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3, initialDelay = 1000): Promise<Response> {
   let delay = initialDelay;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
       const res = await fetch(url, options);
-      
-      // If we get a 429 rate limit error, wait and retry
+
+      // 429: rate limit — wait the retry-after and try again.
       if (res.status === 429) {
         const data = await res.clone().json().catch(() => ({}));
         const retryAfter = data?.error?.metadata?.retry_after_seconds || data?.error?.metadata?.retry_after_seconds_raw;
         const rawWaitTime = retryAfter ? (parseFloat(retryAfter) * 1000) : delay;
-        
-        // If the upstream rate limit wait is too long (e.g. > 5 seconds), do not freeze the UI.
-        // Fail fast so we can show a friendly warning and proceed with other models immediately.
+
+        // If the upstream rate limit wait is too long, fail fast so the
+        // UI doesn't freeze waiting on a single witness.
         if (rawWaitTime > 5000) {
-          console.warn(`[OpenRouter 429] Rate limit wait time is too long (${rawWaitTime / 1000}s). Failing fast to prevent freezing UI.`);
+          console.warn(`[OpenRouter 429] Rate limit wait time is too long (${rawWaitTime / 1000}s). Failing fast.`);
           return res;
         }
-        
+
         const waitTime = rawWaitTime + 500;
-        console.warn(`[OpenRouter 429] Rate limited. Retrying in ${waitTime / 1000}s (Attempt ${attempt + 1}/${maxRetries})...`);
+        console.warn(`[OpenRouter 429] Rate limited. Retrying in ${waitTime / 1000}s (attempt ${attempt + 1}/${maxRetries})...`);
         await new Promise(resolve => setTimeout(resolve, waitTime));
-        delay *= 2; // Exponential backoff
+        delay *= 2;
         continue;
       }
-      
+
+      // 5xx: transient OpenRouter / upstream provider error. Retry with
+      // exponential backoff so a single flaky moment doesn't tank the turn.
+      if (res.status >= 500 && res.status < 600 && attempt < maxRetries - 1) {
+        console.warn(`[OpenRouter ${res.status}] Upstream provider error. Retrying in ${delay / 1000}s (attempt ${attempt + 1}/${maxRetries})...`);
+        await new Promise(resolve => setTimeout(resolve, delay));
+        delay *= 2;
+        continue;
+      }
+
       return res;
     } catch (err) {
       if (attempt === maxRetries - 1) throw err;
