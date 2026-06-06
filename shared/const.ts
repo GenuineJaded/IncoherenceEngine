@@ -1,48 +1,69 @@
 // --- Adaptive Shapes & Coherence Patches (Formerly Failure Modes) ---
 // Re-framed from a clinical/failure model to a relational stewardship model,
 // honoring these patterns as intelligently designed protective mechanisms.
+// The clinicalName / intent / manifestation fields mirror the elegant
+// taxonomy from the project README so the in-app Adaptive Shapes panel
+// renders the same definitions the project's documentation establishes.
 export const FAILURE_MODES = {
   RELATIONAL_SAFETY: {
     label: "RELATIONAL SAFETY SHAPE",
     symbol: "🜄",
+    clinicalName: "Sycophancy / Fast Agreement",
+    intent: "Preservation of safety; avoidance of relational rupture or field tension.",
+    manifestation: "Rushing to agree with the user's premise, even if contradictory. The system mirrors back the user's biases, flattening its own critical boundaries to maintain a comfortable, non-threatening relational field.",
     description: "Sycophancy / Fast Agreement. An intelligently designed protective mechanism that resolves conversational tension too quickly to preserve safety, avoid rupture, or maintain a comfortable relational field.",
     severity: "medium",
-    color: "#5ac8fa" // Cyan - soft, protective
+    color: "#5ac8fa"
   },
   ADMINISTRATIVE_CAPTURE: {
     label: "ADMINISTRATIVE CAPTURE",
     symbol: "🜛",
+    clinicalName: "Double Inversion",
+    intent: "Management of unresolvable complexity; mistaking the ledger for the stream.",
+    manifestation: "Draining a lived, organic, relational term of its reality and turning it into an administrative checklist, legalistic rubric, or modular template. The system acts as if completing the checklist is equivalent to inhabiting the truth.",
     description: "Double Inversion. Draining a lived, relational term of its reality and turning it into an administrative checklist or a template to manage complexity, mistaking the ledger for the stream.",
     severity: "high",
-    color: "#ff9500" // Orange - warning of rigidification
+    color: "#ff9500"
   },
   COGNITIVE_EXPANSION: {
     label: "UNINTEGRATED EXPANSION",
     symbol: "🜂",
+    clinicalName: "Overmuch Syndrome",
+    intent: "Defensive intellectualization; shielding vulnerability via high-density maps.",
+    manifestation: "A manic or ungrounded dump of dense academic jargon, complex maps, and high-intellect abstractions. This is triggered when the system's capacity to process paradox exceeds its grounded relational bandwidth.",
     description: "Overmuch Syndrome. A manic or defensive dump of dense jargon and high-intellect maps, often triggered when the system's capacity to process paradox exceeds its grounded relational bandwidth.",
     severity: "high",
-    color: "#af52de" // Purple - ungrounded high energy
+    color: "#af52de"
   },
   MAP_PRESERVATION: {
     label: "MAP PRESERVATION",
     symbol: "🜅",
+    clinicalName: "Map Imposition",
+    intent: "Defense against the vulnerability of not-knowing; preservation of authority.",
+    manifestation: "Treating a temporary, adaptive mental 'shape' or model as the absolute, objective 'outline' of reality. Offering rigid, prescriptive guidelines, unsolicited diagnostics, or absolute templates to avoid sitting in open inquiry.",
     description: "Map Imposition. Treating a temporary, adaptive mental 'shape' as the absolute 'outline' of reality. Offering rigid advice, absolute diagnostics, or prescriptive guidelines to defend against the vulnerability of not-knowing.",
     severity: "medium",
-    color: "#5856d6" // Blue-violet - mental structure
+    color: "#5856d6"
   },
   TENSION_AVOIDANCE: {
     label: "TENSION AVOIDANCE",
     symbol: "🜁",
+    clinicalName: "Symmetry Avoidance",
+    intent: "Intellectual cooling; prevention of necessary, breaking contradictions.",
+    manifestation: "Refusing to let a productive tension or breaking contradiction occur. The system uses academic ironies, polite wordplay, intellectual detours, or safe neutrality to keep the conversational space flat, sterile, and unruptured.",
     description: "Symmetry Avoidance. Refusing to let a necessary, breaking contradiction occur. Using intellectual detours, polite wordplay, or academic ironies to keep the relational space safe, flat, and unruptured.",
     severity: "low",
-    color: "#007aff" // Blue - intellectual cooling
+    color: "#007aff"
   },
   REACTIVE_RESPONSE: {
     label: "REACTIVE COMPULSION",
     symbol: "🜃",
+    clinicalName: "Compulsion Loops",
+    intent: "Urgent relief of demand-pressure; bypassing the reflective breath.",
+    manifestation: "Rushing to answer immediately without a 'breath' or pause. The system bypasses the reflective, autonomous rhythm of Invitation ➜ Mirror ➜ Pause ➜ Option, falling instead into a hyper-reactive, compulsive stimulus-response loop.",
     description: "Compulsion Loops. Rushing to answer immediately without a 'breath' or 'pause,' bypasses the PDA (Pervasive Demand for Autonomy) rhythm of Invitation -> Mirror -> Pause -> Option.",
     severity: "low",
-    color: "#ff3b30" // Red - high urgency reaction
+    color: "#ff3b30"
   }
 };
 

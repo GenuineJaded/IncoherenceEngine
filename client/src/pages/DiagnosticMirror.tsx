@@ -7,9 +7,10 @@ import {
 } from "lucide-react";
 import {
   FALLBACK_OPENROUTER_MODELS, DEFAULT_PRIMARY_MODEL, DEFAULT_ANALYZERS,
-  CORPUS_DATA, SYSTEM_PROMPT, sanitizeApiKey, fetchOpenRouterModels,
+  CORPUS_DATA, FAILURE_MODES, SYSTEM_PROMPT, sanitizeApiKey, fetchOpenRouterModels,
   type OpenRouterModel,
 } from "../const";
+import type { FailureModeKey } from "@shared/const";
 import AnnotatedResponse, { Annotation } from "../components/AnnotatedResponse";
 import JRatioMeter from "../components/JRatioMeter";
 import CorpusPanel from "../components/CorpusPanel";
@@ -121,6 +122,8 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
   // Layout state
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const [corpusOpen, setCorpusOpen] = useState(false);
+  const [corpusMode, setCorpusMode] = useState<"corpus" | "shapes">("shapes");
+  const [triggeredShapes, setTriggeredShapes] = useState<FailureModeKey[]>([]);
 
   // Chat state
   const [messages, setMessages] = useState<Message[]>([]);
@@ -429,8 +432,18 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
         }]);
 
         setLatestCoverage(coverage);
+        // Track corpus references for the manual Corpus view but don't auto-open it.
         if (finalRefs.length > 0) {
           setCorpusRefs(finalRefs);
+        }
+        // When the witnesses flag protective shapes, surface their elegant
+        // definitions in the right panel instead of the abstract corpus.
+        const uniqueShapes = Array.from(
+          new Set(mergedAnnotations.map(a => a.type))
+        ).filter((t): t is FailureModeKey => t in FAILURE_MODES);
+        if (uniqueShapes.length > 0) {
+          setTriggeredShapes(uniqueShapes);
+          setCorpusMode("shapes");
           setCorpusOpen(true);
         }
     } catch (err: any) {
@@ -469,9 +482,16 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
 
         <div className="flex items-center gap-4">
           <button
-            onClick={() => setCorpusOpen(!corpusOpen)}
+            onClick={() => {
+              if (corpusOpen && corpusMode === "corpus") {
+                setCorpusOpen(false);
+              } else {
+                setCorpusMode("corpus");
+                setCorpusOpen(true);
+              }
+            }}
             className={`p-1.5 transition-colors flex items-center gap-2 ${
-              corpusOpen ? "text-primary" : "text-muted-foreground hover:text-foreground"
+              corpusOpen && corpusMode === "corpus" ? "text-primary" : "text-muted-foreground hover:text-foreground"
             }`}
             title="Toggle Corpus Panel"
           >
@@ -674,8 +694,11 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
         {/* Right Corpus Panel */}
         {corpusOpen && (
           <CorpusPanel
+            mode={corpusMode}
             corpusRefs={corpusRefs}
             corpusData={CORPUS_DATA}
+            triggeredShapes={triggeredShapes}
+            failureModes={FAILURE_MODES}
             onClose={() => setCorpusOpen(false)}
           />
         )}
