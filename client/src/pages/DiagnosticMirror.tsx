@@ -17,7 +17,7 @@ import CorpusPanel from "../components/CorpusPanel";
 import { toast } from "sonner";
 
 interface Message {
-  role: "user" | "system";
+  role: "user" | "assistant";
   content: string;
   annotations?: Annotation[];
   jRatio?: number;
@@ -186,7 +186,7 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
 
   // Compute average J-ratio (using the Joy Equation telemetry)
   useEffect(() => {
-    const systemMsgs = messages.filter(m => m.role === "system" && m.jRatio !== undefined);
+    const systemMsgs = messages.filter(m => m.role === "assistant" && m.jRatio !== undefined);
     if (systemMsgs.length === 0) {
       setAvgRatio(null);
       setLatestRatio(null);
@@ -263,7 +263,7 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
 
         // Trigger analyzers critique in parallel if any are active
         if (analyzers.length === 0) {
-          setMessages(prev => [...prev, { role: "system", content: primaryText, annotations: [], jRatio: 1.0 }]);
+          setMessages(prev => [...prev, { role: "assistant", content: primaryText, annotations: [], jRatio: 1.0 }]);
           setLatestCoverage(0);
           setLoading(false);
           return;
@@ -449,7 +449,7 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
         const coverage = Math.min(100, Math.round((flaggedIndices.size / primaryText.length) * 100));
 
         setMessages(prev => [...prev, {
-          role: "system",
+          role: "assistant",
           content: primaryText,
           annotations: mergedAnnotations,
           jRatio: finalJRatio,
