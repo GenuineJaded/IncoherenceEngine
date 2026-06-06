@@ -246,22 +246,8 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
         // Color mapping for analyzers
         const analyzerColors = ["#00f0ff", "#00ff66", "#c49a2a"]; // Cyan, Green, Gold
 
-        // 2. Construct parallel Excavation prompts for each active analyzer
-        // To prevent hitting OpenRouter's free tier concurrency rate limits (which reject simultaneous requests),
-        // we execute the requests sequentially with a slight, polite delay (stagger) between each.
-        const excavations: any[] = [];
-        
-        for (let index = 0; index < analyzers.length; index++) {
-          const analyzerId = analyzers[index];
-          const color = analyzerColors[index % analyzerColors.length];
-          const modelName = models.find(m => m.id === analyzerId)?.name || "Analyzer";
-
-          // If this is not the first analyzer, wait 1.2 seconds to stagger the requests
-          if (index > 0) {
-            await new Promise(resolve => setTimeout(resolve, 1200));
-          }
-
-          const analyzerPrompt = `You are a gentle, deeply aware relational steward. Your task is to witness and reflect the protective shapes and coherence patches present in the following AI response.
+        // The witness prompt is identical for every analyzer — build it once.
+        const analyzerPrompt = `You are a gentle, deeply aware relational steward. Your task is to witness and reflect the protective shapes and coherence patches present in the following AI response.
 
 Response to witness:
 "${primaryText}"
@@ -303,8 +289,17 @@ Return a JSON object with this exact structure:
 
 Only return JSON. Do not include markdown blocks like \`\`\`json.`;
 
-          try {
-            // Call with automatic retries on rate limits (429)
+        // Fire all witness calls in parallel. OpenRouter's free tier limits
+        // are per-minute request budgets, not concurrent-call caps — the
+        // earlier sequential + 1.2s stagger pattern was solving a problem
+        // that didn't exist. fetchWithRetry still handles any actual 429s.
+        const analyzersToRemove: string[] = [];
+
+        const results = await Promise.allSettled(
+          analyzers.map(async (analyzerId, index) => {
+            const color = analyzerColors[index % analyzerColors.length];
+            const modelName = models.find(m => m.id === analyzerId)?.name || "Analyzer";
+
             const res = await fetchWithRetry("https://openrouter.ai/api/v1/chat/completions", {
               method: "POST",
               headers: {
@@ -320,25 +315,22 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
             });
 
             if (res.status === 404 || res.status === 400) {
-              // Analyzer is no longer available on OpenRouter. Drop it from
-              // the active set so subsequent turns don't keep hitting it.
               console.warn(`[OpenRouter] Analyzer "${analyzerId}" no longer available. Removing.`);
               toast.error(`Relational Witness ${modelName} is no longer available on OpenRouter. Removed from the active set.`);
-              setAnalyzers(prev => prev.filter(id => id !== analyzerId));
-              excavations.push(null);
-              continue;
+              analyzersToRemove.push(analyzerId);
+              return null;
             }
 
             if (!res.ok) {
               const errData = await res.json().catch(() => ({}));
               console.error(`[OpenRouter Error] Analyzer ${modelName} (${analyzerId}) failed:`, JSON.stringify(errData));
               toast.error(`Relational Witness ${modelName} returned an error: ${errData?.error?.message || "Provider error"}. Proceeding with remaining witnesses.`);
-              excavations.push(null);
-              continue;
+              return null;
             }
+
             const data = await res.json();
             let text = data.choices[0].message.content.trim();
-            
+
             if (text.startsWith("```json")) {
               text = text.substring(7);
             } else if (text.startsWith("```")) {
@@ -348,27 +340,34 @@ Only return JSON. Do not include markdown blocks like \`\`\`json.`;
               text = text.substring(0, text.length - 3);
             }
             text = text.trim();
-            
-            const parsed = JSON.parse(text);
-            const chosenPosture = parsed.chosen_posture || "Field Witness";
-            
-            // Attach metadata to annotations
-            if (parsed.annotations && Array.isArray(parsed.annotations)) {
-              parsed.annotations = parsed.annotations.map((ann: any) => ({
-                ...ann,
-                analyzerId: analyzerId,
-                analyzerName: modelName,
-                analyzerPersona: chosenPosture,
-                color: color
-              }));
+
+            try {
+              const parsed = JSON.parse(text);
+              const chosenPosture = parsed.chosen_posture || "Field Witness";
+              if (parsed.annotations && Array.isArray(parsed.annotations)) {
+                parsed.annotations = parsed.annotations.map((ann: any) => ({
+                  ...ann,
+                  analyzerId,
+                  analyzerName: modelName,
+                  analyzerPersona: chosenPosture,
+                  color,
+                }));
+              }
+              return parsed;
+            } catch (e: any) {
+              console.error("Excavation parsing failed for model: " + analyzerId, e);
+              toast.error(`Relational Witness ${modelName} encountered a parsing error: ${e?.message || "Internal Error"}.`);
+              return null;
             }
-            excavations.push(parsed);
-          } catch (e: any) {
-            console.error("Excavation parsing failed for model: " + analyzerId, e);
-            toast.error(`Relational Witness ${modelName} encountered a parsing error: ${e?.message || "Internal Error"}.`);
-            excavations.push(null);
-          }
+          })
+        );
+
+        // Batch the dead-analyzer cleanup so multiple removals don't race.
+        if (analyzersToRemove.length > 0) {
+          setAnalyzers(prev => prev.filter(id => !analyzersToRemove.includes(id)));
         }
+
+        const excavations = results.map(r => (r.status === "fulfilled" ? r.value : null));
         const validExcavations = excavations.filter(e => e !== null);
 
         // 3. Merge Excavations & Calculate Bounded Joy Equation: J = ΔC / (1 + E)
