@@ -31,14 +31,22 @@ interface DiagnosticMirrorProps {
 
 // Helper function to execute fetch requests with automatic retries on
 // rate limits (HTTP 429), transient upstream provider errors (HTTP 5xx),
-// and network errors. OpenRouter's "Provider returned error" surfaces as
-// a 5xx — without retry, a single flaky upstream call kills a witness for
-// the whole turn even though it would succeed on retry.
-async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3, initialDelay = 1000): Promise<Response> {
+// and network errors. Each attempt also has a hard 90-second timeout so a
+// hung upstream model can't keep the UI spinning indefinitely; timeouts
+// are NOT retried (retrying a hang just hangs again for the same wait).
+async function fetchWithRetry(
+  url: string,
+  options: RequestInit,
+  maxRetries = 3,
+  initialDelay = 1000,
+  timeoutMs = 90000
+): Promise<Response> {
   let delay = initialDelay;
   for (let attempt = 0; attempt < maxRetries; attempt++) {
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
     try {
-      const res = await fetch(url, options);
+      const res = await fetch(url, { ...options, signal: controller.signal });
 
       // 429: rate limit — wait the retry-after and try again.
       if (res.status === 429) {
@@ -46,8 +54,6 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3,
         const retryAfter = data?.error?.metadata?.retry_after_seconds || data?.error?.metadata?.retry_after_seconds_raw;
         const rawWaitTime = retryAfter ? (parseFloat(retryAfter) * 1000) : delay;
 
-        // If the upstream rate limit wait is too long, fail fast so the
-        // UI doesn't freeze waiting on a single witness.
         if (rawWaitTime > 5000) {
           console.warn(`[OpenRouter 429] Rate limit wait time is too long (${rawWaitTime / 1000}s). Failing fast.`);
           return res;
@@ -60,8 +66,7 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3,
         continue;
       }
 
-      // 5xx: transient OpenRouter / upstream provider error. Retry with
-      // exponential backoff so a single flaky moment doesn't tank the turn.
+      // 5xx: transient OpenRouter / upstream provider error.
       if (res.status >= 500 && res.status < 600 && attempt < maxRetries - 1) {
         console.warn(`[OpenRouter ${res.status}] Upstream provider error. Retrying in ${delay / 1000}s (attempt ${attempt + 1}/${maxRetries})...`);
         await new Promise(resolve => setTimeout(resolve, delay));
@@ -70,11 +75,19 @@ async function fetchWithRetry(url: string, options: RequestInit, maxRetries = 3,
       }
 
       return res;
-    } catch (err) {
+    } catch (err: any) {
+      // AbortError comes from our own timeout. Don't retry — the model is
+      // hung or overloaded and retrying just hangs again for another full
+      // timeout. Fail clean with an actionable message instead.
+      if (err?.name === "AbortError") {
+        throw new Error(`Request timed out after ${timeoutMs / 1000}s. The model may be overloaded — try a different one.`);
+      }
       if (attempt === maxRetries - 1) throw err;
       console.warn(`[Network Error] Failed request. Retrying in ${delay / 1000}s...`, err);
       await new Promise(resolve => setTimeout(resolve, delay));
       delay *= 2;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
   return fetch(url, options); // final fallback
