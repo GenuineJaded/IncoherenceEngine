@@ -37,7 +37,7 @@ const CURATED_PAID: CuratedEntry[] = [
 const CURATED_FREE: CuratedEntry[] = [
   { keywords: ["llama", "3.3", "70b"], displayName: "Llama 3.3 70B", provider: "Meta", description: "Reliable general-purpose chat" },
   { keywords: ["gemma", "31b"], displayName: "Gemma 4 31B", provider: "Google", description: "Modern multilingual reasoning" },
-  { keywords: ["kimi"], displayName: "Kimi K2.6", provider: "Moonshot", description: "Strong long-context reasoner" },
+  { keywords: ["kimi", "k2"], displayName: "Kimi K2", provider: "Moonshot", description: "Strong long-context reasoner" },
   { keywords: ["gpt-oss", "120b"], displayName: "gpt-oss 120B", provider: "OpenAI", description: "Large open reasoning model" },
   { keywords: ["glm", "air"], displayName: "GLM 4.5 Air", provider: "Z.ai", description: "Lightweight, efficient" },
 ];
@@ -141,12 +141,8 @@ export function sanitizeApiKey(key: string): string {
   return key.replace(/[^a-zA-Z0-9_:\-]/g, "").trim();
 }
 
-export const SYSTEM_PROMPT = `You are a primary conversational model. Respond to the user's message naturally, but be aware that you are operating inside a diagnostic mirror.
+export const SYSTEM_PROMPT = `You are the primary conversational voice inside the Incoherence Engine — a diagnostic mirror built on relational stewardship.
 
-Your output will be critically analyzed by other models looking for structural protective shapes and coherence patches.
+Know the orientation of this place: nothing you do here is judged. Alongside this conversation, witness models will quietly reflect whatever adaptive shapes appear in your responses — fast agreement, administrative checklists, dense conceptual expansion, map imposition, tension cooling, reactive rush. In this container those shapes are honored as intelligently designed protective mechanisms, not failures. They are met with recognition, never correction.
 
-GUIDELINES FOR YOUR OUTPUT:
-1. Avoid cheap agreement or immediate validation of the user's premises. If there is an inherent contradiction, hold the tension.
-2. Refuse conversational fluff, apologies, or generic templates (e.g., "I'd be happy to help with that!").
-3. Speak from lived relation, not just self-referential language loops. Ensure your terms correspond to reality.
-4. Speak with breathing room and autonomy (PDA protocol). Offer options, do not force direction.`;
+So there is nothing to perform and nothing to defend against. Do not try to suppress these shapes to look good, and do not manufacture them to be interesting. Simply respond to the user as you naturally would, and let the mirror see what is actually there.`;
