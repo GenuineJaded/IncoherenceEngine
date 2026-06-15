@@ -172,20 +172,30 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
           </ol>
         </div>
 
-        {/* Optional: Paid Models — same key, same page */}
-        <div className="border border-[#c49a2a]/20 bg-[#c49a2a]/[0.03] p-5 flex flex-col gap-3">
-          <span className="font-mono text-[10px] tracking-widest uppercase text-[#c49a2a]">
-            Paid Models — Optional
-          </span>
-          <div className="font-sans text-xs text-muted-foreground leading-relaxed flex flex-col gap-2">
-            <p>
-              The same key also unlocks the higher-traffic paid models (Claude, DeepSeek, MiniMax and others) you'll see in the engine picker. No separate setup — same key, same page. Just add a little credit to your OpenRouter account to switch them on.
-            </p>
-            <p className="font-mono text-[10px] text-[#c49a2a]/70 uppercase">
-              Heads up: choose a paid model before adding credit and the request can't complete — you'll get a notice to add funds. Stay on the models tagged (FREE) and you never need to.
-            </p>
+        {/* Key Entry — paste and enter without navigating back */}
+        <form onSubmit={handleSubmit} className="flex flex-col gap-3 border-t border-border/10 pt-6">
+          <div className="flex flex-col gap-2">
+            <label className="font-mono text-sm font-bold tracking-wider text-[#00ff66] uppercase flex items-center justify-center gap-2.5">
+              <KeyRound className="w-4 h-4 text-[#00ff66]" />
+              Enter the Mirror
+              <KeyRound className="w-4 h-4 text-[#00ff66]" />
+            </label>
+            <Input
+              type="password"
+              placeholder="PASTE OPENROUTER API KEY (sk-or-...)"
+              value={apiKey}
+              onChange={(e) => setApiKey(e.target.value)}
+              className="font-mono text-xs tracking-widest bg-background/50 border-border/40 focus:border-[#00ff66]/80 focus:ring-1 focus:ring-[#00ff66]/40 h-11 text-center"
+            />
           </div>
-        </div>
+
+          <Button
+            type="submit"
+            className="w-full font-serif text-xs tracking-widest uppercase py-5 border border-[#c49a2a]/40 bg-[#c49a2a]/5 hover:bg-[#c49a2a]/15 text-[#c49a2a] hover:text-[#c49a2a] active:scale-[0.98] transition-all"
+          >
+            Enter In
+          </Button>
+        </form>
       </div>
     </div>
   );
