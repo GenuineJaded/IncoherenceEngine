@@ -288,6 +288,15 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
           return;
         }
 
+        if (response.status === 402) {
+          // Paid model selected on a key with no credit. This is the case
+          // the Free Version page warns about — make it actionable, not cryptic.
+          const modelName = models.find(m => m.id === primaryModel)?.name || primaryModel;
+          toast.error(`"${modelName}" is a paid model and your OpenRouter key has no credit. Add funds at openrouter.ai, or pick a model tagged (FREE).`);
+          setLoading(false);
+          return;
+        }
+
         if (!response.ok) {
           const errData = await response.json().catch(() => ({}));
           throw new Error(errData?.error?.message || "Failed to fetch response from primary model.");
@@ -440,6 +449,13 @@ RESPONSE TO WITNESS (the assistant's latest reply — flag spans only from this 
               console.warn(`[OpenRouter] Analyzer "${analyzerId}" no longer available. Removing.`, errMsg);
               toast.error(`Relational Witness ${modelName} is no longer available on OpenRouter. Removed from the active set.`);
               analyzersToRemove.push(analyzerId);
+              return null;
+            }
+
+            if (res.status === 402) {
+              // Paid witness on a key with no credit. Keep it assigned —
+              // the user just needs to add funds or swap to a free witness.
+              toast.error(`Witness ${modelName} is a paid model and your OpenRouter key has no credit. Add funds, or pick a witness tagged (FREE).`);
               return null;
             }
 

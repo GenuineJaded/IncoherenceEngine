@@ -133,7 +133,7 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
           </h2>
           <div className="font-sans text-xs text-muted-foreground leading-relaxed flex flex-col gap-2">
             <p>
-              Welcome to the **Free Version**. To be absolutely clear: **there is nothing simulated about this version.**
+              Welcome to the <strong className="text-foreground font-semibold">Free Version</strong>. To be absolutely clear: <strong className="text-foreground font-semibold">there is nothing simulated about this version.</strong>
             </p>
             <p>
               You will be interacting with 100% real, active AI models (like Google's Gemini, Meta's Llama, and Qwen) performing genuine, high-level structural critiques of each other. 
@@ -164,12 +164,27 @@ export default function LandingPage({ onEnter }: LandingPageProps) {
               and sign up for a free account.
             </li>
             <li>
-              Navigate to your dashboard, create a new API key, and name it (e.g., "Incoherence Engine"). **No credit card is required.**
+              Navigate to your dashboard, create a new API key, and name it (e.g., "Incoherence Engine"). <strong className="text-foreground">No credit card is required.</strong>
             </li>
             <li>
               Copy the key (it starts with <code className="text-foreground">sk-or-...</code>) and paste it on the welcome screen to begin.
             </li>
           </ol>
+        </div>
+
+        {/* Optional: Paid Models — same key, same page */}
+        <div className="border border-[#c49a2a]/20 bg-[#c49a2a]/[0.03] p-5 flex flex-col gap-3">
+          <span className="font-mono text-[10px] tracking-widest uppercase text-[#c49a2a]">
+            Paid Models — Optional
+          </span>
+          <div className="font-sans text-xs text-muted-foreground leading-relaxed flex flex-col gap-2">
+            <p>
+              The same key also unlocks the higher-traffic paid models (Claude, DeepSeek, MiniMax and others) you'll see in the engine picker. No separate setup — same key, same page. Just add a little credit to your OpenRouter account to switch them on.
+            </p>
+            <p className="font-mono text-[10px] text-[#c49a2a]/70 uppercase">
+              Heads up: choose a paid model before adding credit and the request can't complete — you'll get a notice to add funds. Stay on the models tagged (FREE) and you never need to.
+            </p>
+          </div>
         </div>
       </div>
     </div>
