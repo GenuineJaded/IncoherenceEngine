@@ -140,16 +140,19 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
         const live = await fetchOpenRouterModels();
         if (cancelled) return;
         setModels(live);
+        // Fall back to free models so a free-key visitor never lands on a paid one.
+        const freePicks = live.filter(m => m.isFree && !m.isRouter);
         setPrimaryModel(prev => {
           if (live.some(m => m.id === prev)) return prev;
-          const next = live[0]?.id || DEFAULT_PRIMARY_MODEL;
+          const next = freePicks[0]?.id || live[0]?.id || DEFAULT_PRIMARY_MODEL;
           console.warn(`[OpenRouter] Stored primary model "${prev}" not in live catalog. Switching to "${next}".`);
           return next;
         });
         setAnalyzers(prev => {
           const valid = prev.filter(id => live.some(m => m.id === id));
           if (valid.length > 0) return valid;
-          return live.slice(0, 2).map(m => m.id);
+          const fromFree = freePicks.slice(1, 3).map(m => m.id);
+          return fromFree.length > 0 ? fromFree : live.slice(0, 2).map(m => m.id);
         });
       } catch (err) {
         console.warn("[OpenRouter] Failed to fetch live model list, using fallback.", err);
@@ -280,7 +283,7 @@ export default function DiagnosticMirror({ apiKey, onLogout }: DiagnosticMirrorP
           }
           // Stored primary model is no longer valid on OpenRouter. Drop it,
           // pick the first available model, and tell the user to try again.
-          const fallback = models[0]?.id || DEFAULT_PRIMARY_MODEL;
+          const fallback = models.find(m => m.isFree && !m.isRouter)?.id || models[0]?.id || DEFAULT_PRIMARY_MODEL;
           toast.error(`Model "${primaryModel}" is no longer available on OpenRouter. Switched to "${fallback}" — try again.`);
           localStorage.removeItem("primary_model");
           setPrimaryModel(fallback);
